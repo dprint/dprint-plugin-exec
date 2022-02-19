@@ -99,11 +99,16 @@ impl Configuration {
       )),
       stdin: get_value(&mut config, "stdin", false, &mut diagnostics),
       timeout: get_value(&mut config, "timeout", 30, &mut diagnostics),
-      args: get_value(&mut config, "args", String::default(), &mut diagnostics)
-        .split(" ")
-        .map(String::from)
-        .filter(|p| !p.is_empty())
-        .collect(),
+      args: splitty::split_unquoted_whitespace(&get_value(
+        &mut config,
+        "args",
+        String::default(),
+        &mut diagnostics,
+      ))
+      .unwrap_quotes(true)
+      .filter(|p| !p.is_empty())
+      .map(String::from)
+      .collect(),
     };
 
     let mut handlebars = Handlebars::new();

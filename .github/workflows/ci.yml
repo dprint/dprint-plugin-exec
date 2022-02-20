@@ -154,7 +154,7 @@ jobs:
 
       - name: Get plugin file checksum
         id: get_plugin_file_checksum
-        run: echo "::set-output name=CHECKSUM::$(shasum -a 256 exec.exe-plugin | awk '{print $1}')"
+        run: echo "::set-output name=CHECKSUM::$(shasum -a 256 plugin.exe-plugin | awk '{print $1}')"
 
       - name: Update Config Schema Version
         # update config schema to have version

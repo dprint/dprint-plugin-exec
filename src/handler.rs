@@ -252,9 +252,7 @@ fn maybe_substitute_variables(
     line_width: u32,
     use_tabs: bool,
     indent_width: u8,
-    new_line_kind: NewLineKind,
     cwd: String,
-    stdin: bool,
     timeout: u32,
   }
 
@@ -264,9 +262,7 @@ fn maybe_substitute_variables(
     line_width: config.line_width,
     use_tabs: config.use_tabs,
     indent_width: config.indent_width,
-    new_line_kind: config.new_line_kind,
     cwd: binary.cwd.to_string_lossy().to_string(),
-    stdin: binary.stdin,
     timeout: config.timeout,
   };
 

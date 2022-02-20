@@ -25,9 +25,10 @@ jobs:
             kind: test_debug
 
     outputs:
-      LINUX_ZIP_CHECKSUM: ${{steps.linux_pre_release.outputs.ZIP_CHECKSUM}}
-      MAC_ZIP_CHECKSUM: ${{steps.mac_pre_release.outputs.ZIP_CHECKSUM}}
-      WINDOWS_ZIP_CHECKSUM: ${{steps.windows_pre_release.outputs.ZIP_CHECKSUM}}
+      LINUX_X86_64_ZIP_CHECKSUM: ${{steps.linux_x86_64_pre_release.outputs.ZIP_CHECKSUM}}
+      MAC_X86_64_ZIP_CHECKSUM: ${{steps.mac_x86_64_pre_release.outputs.ZIP_CHECKSUM}}
+      MAC_AARCH64_ZIP_CHECKSUM: ${{steps.mac_aarch64_pre_release.outputs.ZIP_CHECKSUM}}
+      WINDOWS_X86_64_ZIP_CHECKSUM: ${{steps.windows_x86_64_pre_release.outputs.ZIP_CHECKSUM}}
 
     env:
       CARGO_INCREMENTAL: 0
@@ -52,6 +53,11 @@ jobs:
       - name: Build release
         if: matrix.config.kind == 'test_release'
         run: cargo build --release --all-targets --locked --verbose
+      - name: Build release (Mac aarch64)
+        if: startsWith(matrix.config.os, 'macOS') && matrix.config.kind == 'test_release'
+        run: |
+          rustup target add aarch64-apple-darwin
+          cargo build --locked --all-features --release --target aarch64-apple-darwin
 
       # TEST
       - name: Test
@@ -59,21 +65,29 @@ jobs:
 
       # Release
       - name: Pre-release (Linux)
-        id: linux_pre_release
+        id: linux_x86_64_pre_release
         if: startsWith(matrix.config.os, 'ubuntu') && matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
         run: |
           cd target/release
           zip -r dprint-plugin-exec-x86_64-unknown-linux-gnu.zip dprint-plugin-exec
           echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-x86_64-unknown-linux-gnu.zip | awk '{print $1}')"
       - name: Pre-release (Mac)
-        id: mac_pre_release
+        id: mac_x86_64_pre_release
         if: startsWith(matrix.config.os, 'macOS') && matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
         run: |
           cd target/release
           zip -r dprint-plugin-exec-x86_64-apple-darwin.zip dprint-plugin-exec
           echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-x86_64-apple-darwin.zip | awk '{print $1}')"
+      - name: Pre-release (Mac aarch64)
+        id: mac_aarch64_pre_release
+        if: startsWith(matrix.config.os, 'macOS') && matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd target/aarch64-apple-darwin/release
+          zip -r dprint-plugin-exec-aarch64-apple-darwin.zip dprint-plugin-exec
+          echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-aarch64-apple-darwin.zip | awk '{print $1}')"
+          mv dprint-plugin-exec-aarch64-apple-darwin.zip ../../release
       - name: Pre-release (Windows)
-        id: windows_pre_release
+        id: windows_x86_64_pre_release
         if: startsWith(matrix.config.os, 'windows') && matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
         run: |
           cd target/release
@@ -92,7 +106,9 @@ jobs:
         if: startsWith(matrix.config.os, 'macOS') && matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
         with:
           name: mac-artifacts
-          path: target/release/dprint-plugin-exec-x86_64-apple-darwin.zip
+          path: |
+            target/release/dprint-plugin-exec-x86_64-apple-darwin.zip
+            target/release/dprint-plugin-exec-aarch64-apple-darwin.zip
       - name: Upload Artifacts (Windows)
         uses: actions/upload-artifact@v2
         if: startsWith(matrix.config.os, 'windows') && matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
@@ -116,13 +132,15 @@ jobs:
         run: |
           mv linux-artifacts/dprint-plugin-exec-x86_64-unknown-linux-gnu.zip .
           mv mac-artifacts/dprint-plugin-exec-x86_64-apple-darwin.zip .
+          mv mac-artifacts/dprint-plugin-exec-aarch64-apple-darwin.zip .
           mv windows-artifacts/dprint-plugin-exec-x86_64-pc-windows-msvc.zip .
 
       - name: Output checksums
         run: |
-          echo "Linux zip: ${{needs.build.outputs.LINUX_ZIP_CHECKSUM}}"
-          echo "Mac zip: ${{needs.build.outputs.MAC_ZIP_CHECKSUM}}"
-          echo "Windows zip: ${{needs.build.outputs.WINDOWS_ZIP_CHECKSUM}}"
+          echo "Linux x86_64 zip: ${{needs.build.outputs.LINUX_X86_64_ZIP_CHECKSUM}}"
+          echo "Mac x86_64 zip: ${{needs.build.outputs.MAC_X86_64_ZIP_CHECKSUM}}"
+          echo "Mac aarch64 zip: ${{needs.build.outputs.MAC_AARCH64_ZIP_CHECKSUM}}"
+          echo "Windows x86_64 zip: ${{needs.build.outputs.WINDOWS_X86_64_ZIP_CHECKSUM}}"
 
       - name: Create plugin file
         run: deno run --allow-read=. --allow-write=. scripts/createPluginFile.ts
@@ -146,6 +164,7 @@ jobs:
         with:
           files: |
             dprint-plugin-exec-x86_64-apple-darwin.zip
+            dprint-plugin-exec-aarch64-apple-darwin.zip
             dprint-plugin-exec-x86_64-unknown-linux-gnu.zip
             dprint-plugin-exec-x86_64-pc-windows-msvc.zip
             exec.exe-plugin

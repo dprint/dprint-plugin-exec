@@ -18,6 +18,7 @@ use std::path::PathBuf;
 pub struct Configuration {
   /// Doesn't allow formatting unless the configuration had no diagnostics.
   pub is_valid: bool,
+  pub cache_key: String,
   pub line_width: u32,
   pub use_tabs: bool,
   pub indent_width: u8,
@@ -78,6 +79,7 @@ impl Configuration {
 
     let mut resolved_config = Configuration {
       is_valid: true,
+      cache_key: get_value(&mut config, "cacheKey", "1".to_string(), &mut diagnostics),
       line_width: get_value(
         &mut config,
         "lineWidth",
@@ -253,6 +255,21 @@ mod tests {
     assert_eq!(config.indent_width, 8);
     assert_eq!(config.new_line_kind, NewLineKind::CarriageReturnLineFeed);
     assert!(config.use_tabs);
+  }
+
+  #[test]
+  fn general_test() {
+    let unresolved_config = ConfigKeyMap::from([
+      ("cacheKey".to_string(), ConfigKeyValue::from_str("2")),
+      ("timeout".to_string(), ConfigKeyValue::from_i32(5)),
+    ]);
+    let config = Configuration::resolve(unresolved_config, &Default::default()).config;
+    assert_eq!(config.line_width, 120);
+    assert_eq!(config.indent_width, 4);
+    assert_eq!(config.new_line_kind, NewLineKind::LineFeed);
+    assert!(!config.use_tabs);
+    assert_eq!(config.cache_key, "2");
+    assert_eq!(config.timeout, 5);
   }
 
   #[test]

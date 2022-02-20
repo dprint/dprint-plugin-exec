@@ -1,5 +1,5 @@
 -- resources/alice29.txt --
-~~ lineWidth: 35, timeout: 3, executable: fold, args: -w {{line_width}} -s {{file_path}} ~~
+~~ lineWidth: 35, timeout: 3, fold: fold -w {{line_width}} -s {{file_path}} ~~
 == Long text ==
 // does not matter
 

@@ -1,20 +1,34 @@
 use std::path::Path;
-use std::process::{ExitStatus, Stdio};
+use std::process::ExitStatus;
+use std::process::Stdio;
 use std::time::Duration;
 
-use anyhow::{anyhow, Error, Result};
-use dprint_core::configuration::{
-  resolve_new_line_kind, ConfigKeyMap, GlobalConfiguration, NewLineKind, ResolveConfigurationResult,
-};
-use dprint_core::plugins::{PluginHandler, PluginInfo};
+use anyhow::anyhow;
+use anyhow::bail;
+use anyhow::Error;
+use anyhow::Result;
+use dprint_core::configuration::resolve_new_line_kind;
+use dprint_core::configuration::ConfigKeyMap;
+use dprint_core::configuration::GlobalConfiguration;
+use dprint_core::configuration::NewLineKind;
+use dprint_core::configuration::ResolveConfigurationResult;
+use dprint_core::plugins::PluginHandler;
+use dprint_core::plugins::PluginInfo;
 use handlebars::Handlebars;
-use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWriteExt, BufReader};
+use serde::Deserialize;
+use serde::Serialize;
+use tokio::io::AsyncBufReadExt;
+use tokio::io::AsyncRead;
+use tokio::io::AsyncWriteExt;
+use tokio::io::BufReader;
 use tokio::process::Command;
-use tokio::sync::oneshot::{self, Receiver, Sender};
+use tokio::sync::oneshot::Receiver;
+use tokio::sync::oneshot::Sender;
+use tokio::sync::oneshot::{self};
 use tokio::time::error::Elapsed;
 use tokio::time::timeout;
 
+use crate::configuration::BinaryConfiguration;
 use crate::configuration::Configuration;
 
 pub struct ExecHandler;
@@ -78,11 +92,11 @@ SOFTWARE.",
   fn format_text(
     &mut self,
     file_path: &Path,
-    _file_text: &str,
+    file_text: &str,
     config: &Configuration,
     mut _format_with_host: impl FnMut(&Path, String, &ConfigKeyMap) -> Result<String>,
   ) -> Result<String> {
-    format_text(file_path, _file_text, config, _format_with_host)
+    format_text(file_path, file_text, config, _format_with_host)
   }
 }
 
@@ -93,64 +107,95 @@ pub async fn format_text(
   config: &Configuration,
   mut _format_with_host: impl FnMut(&Path, String, &ConfigKeyMap) -> Result<String>,
 ) -> Result<String> {
-  // format here
-  let args = maybe_substitute_variables(file_path, file_text, &config);
+  let mut file_text = file_text.to_string();
+  for binary in select_binaries(&config, file_path)? {
+    // format here
+    let args = maybe_substitute_variables(file_path, &file_text, &config, &binary);
 
-  let mut child = Command::new(&config.executable)
-    .kill_on_drop(true)
-    .current_dir(&config.exe_dir_path)
-    .stdout(Stdio::piped())
-    .stdin(if config.stdin {
-      Stdio::piped()
+    let mut child = Command::new(&binary.executable)
+      .current_dir(&binary.cwd)
+      .kill_on_drop(true)
+      .stdout(Stdio::piped())
+      .stdin(if binary.stdin {
+        Stdio::piped()
+      } else {
+        Stdio::null()
+      })
+      .stderr(Stdio::piped())
+      .args(args)
+      .spawn()
+      .map_err(|e| anyhow!("Cannot start formatter process: {}", e))?;
+
+    // capturing stdout
+    let (out_tx, out_rx) = oneshot::channel();
+    if let Some(stdout) = child.stdout.take() {
+      let eol = resolve_new_line_kind(&file_text, config.new_line_kind);
+      tokio::spawn(read_stream_lines(stdout, eol, out_tx));
     } else {
-      Stdio::null()
-    })
-    .stderr(Stdio::piped())
-    .args(args)
-    .spawn()
-    .map_err(|e| anyhow!("Cannot start formatter process: {}", e))?;
-
-  // capturing stdout
-  let (out_tx, out_rx) = oneshot::channel();
-  if let Some(stdout) = child.stdout.take() {
-    let eol = resolve_new_line_kind(file_text, config.new_line_kind);
-    tokio::spawn(read_stream_lines(stdout, eol, out_tx));
-  } else {
-    return Err(anyhow!("Formatter did not have a handle for stdout"));
-  }
-
-  // capturing stderr
-  let (err_tx, err_rx) = oneshot::channel();
-  if let Some(stderr) = child.stderr.take() {
-    let system_eol = resolve_new_line_kind(file_text, NewLineKind::System);
-    tokio::spawn(read_stream_lines(stderr, system_eol, err_tx));
-  }
-
-  // write file text into child's stdin
-  if config.stdin {
-    child
-      .stdin
-      .take()
-      .ok_or_else(|| anyhow!("Cannot open formatter stdin"))?
-      .write_all(file_text.as_bytes())
-      .await
-      .map_err(|_| anyhow!("Cannot write into formatter stdin"))
-      .unwrap();
-  }
-
-  // Ensure the child process is spawned in the runtime so it can
-  // make progress on its own while we await for any output.
-  let child_completed = tokio::spawn(async move {
-    match child.wait().await {
-      Ok(status) => status,
-      Err(e) => panic!("Error while waiting for formatter to complete: {}", e),
+      return Err(anyhow!("Formatter did not have a handle for stdout"));
     }
-  });
 
-  match timeout(Duration::from_secs(config.timeout as u64), out_rx).await {
-    Ok(result) => handle_child_exit_status(result?, err_rx, child_completed.await?).await,
-    Err(e) => Err(timeout_err(config, e)),
+    // capturing stderr
+    let (err_tx, err_rx) = oneshot::channel();
+    if let Some(stderr) = child.stderr.take() {
+      let system_eol = resolve_new_line_kind(&file_text, NewLineKind::System);
+      tokio::spawn(read_stream_lines(stderr, system_eol, err_tx));
+    }
+
+    // write file text into child's stdin
+    if binary.stdin {
+      child
+        .stdin
+        .take()
+        .ok_or_else(|| anyhow!("Cannot open formatter stdin"))?
+        .write_all(file_text.as_bytes())
+        .await
+        .map_err(|_| anyhow!("Cannot write into formatter stdin"))
+        .unwrap();
+    }
+
+    // Ensure the child process is spawned in the runtime so it can
+    // make progress on its own while we await for any output.
+    let child_completed = tokio::spawn(async move {
+      match child.wait().await {
+        Ok(status) => status,
+        Err(e) => panic!("Error while waiting for formatter to complete: {}", e),
+      }
+    });
+
+    file_text = match timeout(Duration::from_secs(config.timeout as u64), out_rx).await {
+      Ok(result) => handle_child_exit_status(result?, err_rx, child_completed.await?).await,
+      Err(e) => Err(timeout_err(config, e)),
+    }?;
   }
+  Ok(file_text)
+}
+
+fn select_binaries<'a>(
+  config: &'a Configuration,
+  file_path: &Path,
+) -> Result<Vec<&'a BinaryConfiguration>> {
+  if !config.is_valid {
+    bail!("Cannot format because the configuration was not valid.");
+  }
+
+  let mut binaries = Vec::new();
+
+  for binary in &config.binaries {
+    if let Some(associations) = &binary.associations {
+      if associations.is_match(file_path) {
+        binaries.push(binary);
+      }
+    }
+  }
+
+  if binaries.is_empty() {
+    if let Some(binary) = config.binaries.iter().find(|b| b.associations.is_none()) {
+      binaries.push(binary);
+    }
+  }
+
+  Ok(binaries)
 }
 
 async fn handle_child_exit_status(
@@ -194,37 +239,38 @@ fn maybe_substitute_variables(
   file_path: &Path,
   file_text: &str,
   config: &Configuration,
+  binary: &BinaryConfiguration,
 ) -> Vec<String> {
   let mut handlebars = Handlebars::new();
   handlebars.set_strict_mode(true);
 
   #[derive(Clone, Serialize, Deserialize)]
-  struct TemplateVariables {
+  struct TemplateVariables<'a> {
     file_path: String,
-    file_text: String,
+    file_text: &'a str,
     line_width: u32,
     use_tabs: bool,
     indent_width: u8,
     new_line_kind: NewLineKind,
-    exe_dir_path: String,
+    cwd: String,
     stdin: bool,
     timeout: u32,
   }
 
   let vars = TemplateVariables {
-    file_path: file_path.to_str().map(String::from).unwrap(),
-    file_text: String::from(file_text),
+    file_path: file_path.to_string_lossy().to_string(),
+    file_text: &file_text,
     line_width: config.line_width,
     use_tabs: config.use_tabs,
     indent_width: config.indent_width,
     new_line_kind: config.new_line_kind,
-    exe_dir_path: config.exe_dir_path.to_str().map(String::from).unwrap(),
-    stdin: config.stdin,
+    cwd: binary.cwd.to_string_lossy().to_string(),
+    stdin: binary.stdin,
     timeout: config.timeout,
   };
 
   let mut c_args = vec![];
-  for arg in &config.args {
+  for arg in &binary.args {
     let formatted = handlebars
       .render_template(arg, &vars)
       .expect(format!("Cannot format: {}", arg).as_str());

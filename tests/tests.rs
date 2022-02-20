@@ -4,14 +4,12 @@ extern crate dprint_plugin_exec;
 #[test]
 #[cfg(unix)]
 fn test_specs() {
-  use std::collections::HashMap;
-  use std::path::{Path, PathBuf};
+  use std::path::Path;
+  use std::path::PathBuf;
 
   use dprint_core::configuration::*;
   use dprint_development::*;
   use dprint_plugin_exec::configuration::Configuration;
-
-  let global_config = resolve_global_config(HashMap::new(), &Default::default()).config;
 
   let mut tests_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
   tests_dir.push("tests");
@@ -26,10 +24,9 @@ fn test_specs() {
       format_twice: true,
     },
     {
-      let global_config = global_config.clone();
       move |file_name, file_text, spec_config| {
         let config_result =
-          Configuration::resolve(parse_config_key_map(spec_config), &global_config);
+          Configuration::resolve(parse_config_key_map(spec_config), &Default::default());
         ensure_no_diagnostics(&config_result.diagnostics);
 
         let mut file = file_name;
@@ -39,15 +36,12 @@ fn test_specs() {
           file = td.as_path().clone();
         }
 
-        return match dprint_plugin_exec::handler::format_text(
+        dprint_plugin_exec::handler::format_text(
           file,
           &file_text,
           &config_result.config,
           |_, _, _| Result::Ok(String::from("")),
-        ) {
-          Ok(text) => Result::Ok(text),
-          Err(err) => Result::Err(ErrBox::from(err)),
-        };
+        )
       }
     },
     move |_file_name, _file_text, _spec_config| panic!("Not supported."),

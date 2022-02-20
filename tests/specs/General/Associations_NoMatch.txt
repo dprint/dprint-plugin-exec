@@ -1,0 +1,7 @@
+-- resources/test.txt --
+~~ lineWidth: 35, fold: fold -w {{line_width}} -s, fold.stdin: true, fold.associations: **/*.rs ~~
+== should do nothing when the association doesn't match ==
+Testing this out with some very very long text testing testing testing testing testing.
+
+[expect]
+Testing this out with some very very long text testing testing testing testing testing.

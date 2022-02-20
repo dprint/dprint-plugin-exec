@@ -1,5 +1,5 @@
 -- resources/one-line.txt --
-~~ lineWidth: 30, executable: fold, args: -w {{line_width}} -s {{file_path}} ~~
+~~ lineWidth: 30, fold: fold -w {{line_width}} -s {{file_path}} ~~
 == Long text ==
 // does not matter
 

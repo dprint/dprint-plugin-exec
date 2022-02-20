@@ -19,12 +19,13 @@ panic = "abort"
 
 [dependencies]
 anyhow = "1.0.51"
-dprint-core = { version = "0.50.0", features = ["process"] }
-
+dprint-core = { version = "0.51.0", features = ["process"] }
+globset = "0.4.8"
 handlebars = "4.1.6"
 serde = { version = "1.0.118", features = ["derive"] }
 splitty = "0.1.0"
 tokio = { version = "1.15.0", features = ["full", "time"] }
 
 [dev-dependencies]
-dprint-development = "0.4.1"
+dprint-development = "0.7.0"
+pretty_assertions = "1.1.0"

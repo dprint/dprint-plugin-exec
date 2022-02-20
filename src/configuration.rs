@@ -227,9 +227,7 @@ impl Configuration {
 fn get_cwd(dir: Option<String>) -> PathBuf {
   match dir {
     Some(dir) => PathBuf::from(dir),
-    None => std::env::current_dir()
-      .expect("should get cwd")
-      .to_path_buf(),
+    None => std::env::current_dir().expect("should get cwd"),
   }
 }
 

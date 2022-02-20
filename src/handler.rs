@@ -22,9 +22,9 @@ use tokio::io::AsyncRead;
 use tokio::io::AsyncWriteExt;
 use tokio::io::BufReader;
 use tokio::process::Command;
+use tokio::sync::oneshot;
 use tokio::sync::oneshot::Receiver;
 use tokio::sync::oneshot::Sender;
-use tokio::sync::oneshot::{self};
 use tokio::time::error::Elapsed;
 use tokio::time::timeout;
 
@@ -108,9 +108,9 @@ pub async fn format_text(
   mut _format_with_host: impl FnMut(&Path, String, &ConfigKeyMap) -> Result<String>,
 ) -> Result<String> {
   let mut file_text = file_text.to_string();
-  for binary in select_binaries(&config, file_path)? {
+  for binary in select_binaries(config, file_path)? {
     // format here
-    let args = maybe_substitute_variables(file_path, &file_text, &config, &binary);
+    let args = maybe_substitute_variables(file_path, &file_text, config, binary);
 
     let mut child = Command::new(&binary.executable)
       .current_dir(&binary.cwd)
@@ -230,7 +230,8 @@ where
   let mut reader = BufReader::new(readable).lines();
   let mut formatted = String::new();
   while let Some(line) = reader.next_line().await.unwrap() {
-    formatted = formatted + line.as_str() + eol;
+    formatted.push_str(line.as_str());
+    formatted.push_str(eol);
   }
   sender.send(formatted)
 }
@@ -259,7 +260,7 @@ fn maybe_substitute_variables(
 
   let vars = TemplateVariables {
     file_path: file_path.to_string_lossy().to_string(),
-    file_text: &file_text,
+    file_text,
     line_width: config.line_width,
     use_tabs: config.use_tabs,
     indent_width: config.indent_width,
@@ -273,7 +274,7 @@ fn maybe_substitute_variables(
   for arg in &binary.args {
     let formatted = handlebars
       .render_template(arg, &vars)
-      .expect(format!("Cannot format: {}", arg).as_str());
+      .unwrap_or_else(|err| panic!("Cannot format: {}\n\n{}", arg, err));
     c_args.push(formatted);
   }
   c_args

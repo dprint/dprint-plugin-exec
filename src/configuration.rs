@@ -79,7 +79,7 @@ impl Configuration {
 
     let mut resolved_config = Configuration {
       is_valid: true,
-      cache_key: get_value(&mut config, "cacheKey", "1".to_string(), &mut diagnostics),
+      cache_key: get_value(&mut config, "cacheKey", "0".to_string(), &mut diagnostics),
       line_width: get_value(
         &mut config,
         "lineWidth",

@@ -3,8 +3,7 @@
   "indentWidth": 2,
   "lineWidth": 100,
   "rustfmt": {
-    "imports_granularity": "Module",
-    "imports_indent": "Block"
+    "imports_granularity": "Item"
   },
   "includes": [
     "**/*.{json,md,html,scss,css,toml,rs,xml}"

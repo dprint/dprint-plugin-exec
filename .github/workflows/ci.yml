@@ -1,6 +1,12 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    tags:
+    - '*'
 
 jobs:
   build:
@@ -29,12 +35,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Rust setup
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.57.0
-          override: true
+      - uses: dtolnay/rust-toolchain@stable
       - uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x

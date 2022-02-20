@@ -1,7 +1,6 @@
 use anyhow::Result;
-use dprint_core::plugins::process::{
-  handle_process_stdio_messages, start_parent_process_checker_thread,
-};
+use dprint_core::plugins::process::handle_process_stdio_messages;
+use dprint_core::plugins::process::start_parent_process_checker_thread;
 use dprint_plugin_exec::handler::ExecHandler;
 
 fn main() -> Result<()> {

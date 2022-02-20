@@ -1,21 +1,35 @@
 use std::path::Path;
-use std::process::{ExitStatus, Stdio};
+use std::process::ExitStatus;
+use std::process::Stdio;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Error, Result};
-use dprint_core::configuration::{
-  resolve_new_line_kind, ConfigKeyMap, GlobalConfiguration, NewLineKind, ResolveConfigurationResult,
-};
-use dprint_core::plugins::{PluginHandler, PluginInfo};
+use anyhow::anyhow;
+use anyhow::bail;
+use anyhow::Error;
+use anyhow::Result;
+use dprint_core::configuration::resolve_new_line_kind;
+use dprint_core::configuration::ConfigKeyMap;
+use dprint_core::configuration::GlobalConfiguration;
+use dprint_core::configuration::NewLineKind;
+use dprint_core::configuration::ResolveConfigurationResult;
+use dprint_core::plugins::PluginHandler;
+use dprint_core::plugins::PluginInfo;
 use handlebars::Handlebars;
-use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWriteExt, BufReader};
+use serde::Deserialize;
+use serde::Serialize;
+use tokio::io::AsyncBufReadExt;
+use tokio::io::AsyncRead;
+use tokio::io::AsyncWriteExt;
+use tokio::io::BufReader;
 use tokio::process::Command;
-use tokio::sync::oneshot::{self, Receiver, Sender};
+use tokio::sync::oneshot::Receiver;
+use tokio::sync::oneshot::Sender;
+use tokio::sync::oneshot::{self};
 use tokio::time::error::Elapsed;
 use tokio::time::timeout;
 
-use crate::configuration::{BinaryConfiguration, Configuration};
+use crate::configuration::BinaryConfiguration;
+use crate::configuration::Configuration;
 
 pub struct ExecHandler;
 

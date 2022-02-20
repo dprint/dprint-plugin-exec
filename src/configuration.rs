@@ -1,11 +1,16 @@
-use dprint_core::configuration::{
-  get_nullable_value, get_unknown_property_diagnostics, get_value, ConfigKeyMap,
-  ConfigurationDiagnostic, GlobalConfiguration, NewLineKind, ResolveConfigurationResult,
-  DEFAULT_GLOBAL_CONFIGURATION,
-};
+use dprint_core::configuration::get_nullable_value;
+use dprint_core::configuration::get_unknown_property_diagnostics;
+use dprint_core::configuration::get_value;
+use dprint_core::configuration::ConfigKeyMap;
+use dprint_core::configuration::ConfigurationDiagnostic;
+use dprint_core::configuration::GlobalConfiguration;
+use dprint_core::configuration::NewLineKind;
+use dprint_core::configuration::ResolveConfigurationResult;
+use dprint_core::configuration::DEFAULT_GLOBAL_CONFIGURATION;
 use globset::GlobMatcher;
 use handlebars::Handlebars;
-use serde::{Serialize, Serializer};
+use serde::Serialize;
+use serde::Serializer;
 use std::path::PathBuf;
 
 #[derive(Clone, Serialize)]
@@ -47,16 +52,16 @@ impl Configuration {
   /// # Example
   ///
   /// ```
-  /// use std::collections::HashMap;
-  /// use dprint_core::configuration::{resolve_global_config};
+  /// use dprint_core::configuration::ConfigKeyMap;
+  /// use dprint_core::configuration::resolve_global_config;
   /// use dprint_plugin_exec::configuration::Configuration;
   ///
-  /// let config_map = HashMap::new(); // get a collection of key value pairs from somewhere
+  /// let config_map = ConfigKeyMap::new(); // get a collection of key value pairs from somewhere
   /// let global_config_result = resolve_global_config(config_map, &Default::default());
   ///
   /// // check global_config_result.diagnostics here...
   ///
-  /// let exec_config_map = HashMap::new(); // get a collection of k/v pairs from somewhere
+  /// let exec_config_map = ConfigKeyMap::new(); // get a collection of k/v pairs from somewhere
   /// let config_result = Configuration::resolve(
   ///     exec_config_map,
   ///     &global_config_result.config
@@ -229,12 +234,14 @@ fn get_cwd(dir: Option<String>) -> PathBuf {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use dprint_core::configuration::{resolve_global_config, ConfigKeyValue, NewLineKind};
-  use std::collections::HashMap;
+  use dprint_core::configuration::resolve_global_config;
+  use dprint_core::configuration::ConfigKeyValue;
+  use dprint_core::configuration::NewLineKind;
+  use pretty_assertions::assert_eq;
 
   #[test]
   fn handle_global_config() {
-    let global_config = HashMap::from([
+    let global_config = ConfigKeyMap::from([
       ("lineWidth".to_string(), ConfigKeyValue::from_i32(80)),
       ("indentWidth".to_string(), ConfigKeyValue::from_i32(8)),
       ("newLineKind".to_string(), ConfigKeyValue::from_str("crlf")),
@@ -246,5 +253,56 @@ mod tests {
     assert_eq!(config.indent_width, 8);
     assert_eq!(config.new_line_kind, NewLineKind::CarriageReturnLineFeed);
     assert!(config.use_tabs);
+  }
+
+  #[test]
+  fn empty_command_name() {
+    let config = ConfigKeyMap::from([("binary1".to_string(), ConfigKeyValue::from_str(""))]);
+    run_diagnostics_test(
+      config,
+      vec![ConfigurationDiagnostic {
+        property_name: "binary1".to_string(),
+        message: "Expected to find a command name.".to_string(),
+      }],
+    )
+  }
+
+  #[test]
+  fn multiple_binaries_no_associations() {
+    let config = ConfigKeyMap::from([
+      ("binary1".to_string(), ConfigKeyValue::from_str("binary1")),
+      ("binary2".to_string(), ConfigKeyValue::from_str("binary2")),
+      ("binary3".to_string(), ConfigKeyValue::from_str("binary3")),
+    ]);
+    run_diagnostics_test(
+      config,
+      vec![
+        ConfigurationDiagnostic {
+          property_name: "binary2.associations".to_string(),
+          message: concat!(
+            "A \"binary2.associations\" configuration key must be provided because another formatting ",
+            "binary is specified without an associations key. (Example: `\"binary2.associations\": \"**/*.rs\"` ",
+            "would format .rs files with this binary)"
+          ).to_string(),
+        },
+        ConfigurationDiagnostic {
+          property_name: "binary3.associations".to_string(),
+          message: concat!(
+            "A \"binary3.associations\" configuration key must be provided because another formatting ",
+            "binary is specified without an associations key. (Example: `\"binary3.associations\": \"**/*.rs\"` ",
+            "would format .rs files with this binary)"
+          ).to_string(),
+        },
+      ],
+    )
+  }
+
+  fn run_diagnostics_test(
+    config: ConfigKeyMap,
+    expected_diagnostics: Vec<ConfigurationDiagnostic>,
+  ) {
+    let result = Configuration::resolve(config, &Default::default());
+    assert_eq!(result.diagnostics, expected_diagnostics);
+    assert!(!result.config.is_valid);
   }
 }

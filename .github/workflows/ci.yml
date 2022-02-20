@@ -135,6 +135,10 @@ jobs:
         id: get_plugin_file_checksum
         run: echo "::set-output name=CHECKSUM::$(shasum -a 256 exec.exe-plugin | awk '{print $1}')"
 
+      - name: Update Config Schema Version
+        # update config schema to have version
+        run: sed -i 's/exec\/0.0.0/exec\/${{ steps.get_tag_version.outputs.TAG_VERSION }}/' deployment/schema.json
+
       - name: Release
         uses: softprops/action-gh-release@v1
         env:
@@ -145,6 +149,7 @@ jobs:
             dprint-plugin-exec-x86_64-unknown-linux-gnu.zip
             dprint-plugin-exec-x86_64-pc-windows-msvc.zip
             exec.exe-plugin
+            deployment/schema.json
           body: |
             ## Install
 

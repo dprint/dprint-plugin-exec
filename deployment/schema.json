@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://plugins.dprint.dev/dprint/dprint-plugin-exec/0.0.0/schema.json",
+  "type": "object",
+  "properties": {
+    "locked": {
+      "description": "Whether the configuration is not allowed to be overriden or extended.",
+      "type": "boolean"
+    },
+    "lineWidth": {
+      "description": "The width of a line the printer will try to stay under. Note that the printer may exceed this width in certain cases.",
+      "default": 120,
+      "type": "number"
+    },
+    "indentWidth": {
+      "description": "The number of characters for an indent.",
+      "default": 2,
+      "type": "number"
+    },
+    "useTabs": {
+      "description": "Whether to use tabs (true) or spaces (false).",
+      "type": "boolean",
+      "default": false,
+      "oneOf": [{
+        "const": true,
+        "description": ""
+      }, {
+        "const": false,
+        "description": ""
+      }]
+    },
+    "newLineKind": {
+      "description": "The kind of newline to use.",
+      "type": "string",
+      "default": "lf",
+      "oneOf": [{
+        "const": "auto",
+        "description": "For each file, uses the newline kind found at the end of the last line."
+      }, {
+        "const": "crlf",
+        "description": "Uses carriage return, line feed."
+      }, {
+        "const": "lf",
+        "description": "Uses line feed."
+      }, {
+        "const": "system",
+        "description": "Uses the system standard (ex. crlf on Windows)."
+      }]
+    },
+    "cacheKey": {
+      "description": "Optional value used to bust dprint's incremental cache (ex. provide \"1\"). This is useful if you want to force formatting to occur because the underlying binary has changed.",
+      "type": "string"
+    },
+    "timeout": {
+      "description": "Number of seconds to allow a format to progress before a timeout error occurs.",
+      "type": "number",
+      "default": 30
+    }
+  },
+  "patternProperties": {
+    "^.*\\.associations$": {
+      "type": "string",
+      "description": "The pattern to use to match a file path. Ex. \"rustfmt.associations\": \"**/*.rs\""
+    },
+    "^.*\\.cwd$": {
+      "type": "string",
+      "description": "The current working directory to launch the executable with."
+    },
+    "^.*\\.stdin$": {
+      "type": "boolean",
+      "description": "Whether to pass the file text in via stdin.",
+      "default": false
+    }
+  },
+  "additionalProperties": {
+    "type": "string",
+    "description": "Definition for a plugin command. Define the name and command with arguments to execute. Ex. `\"rustfmt\": \"rustfmt\"`"
+  }
+}

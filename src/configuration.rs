@@ -192,7 +192,7 @@ impl Configuration {
         stdin: get_value(
           &mut config,
           &format!("{}.stdin", binary_key),
-          false,
+          true,
           &mut diagnostics,
         ),
       });

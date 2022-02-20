@@ -1,16 +1,16 @@
 extern crate dprint_development;
 extern crate dprint_plugin_exec;
 
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-
-use dprint_core::configuration::*;
-use dprint_development::*;
-use dprint_plugin_exec::configuration::Configuration;
-
 #[test]
 #[cfg(unix)]
 fn test_specs() {
+  use std::collections::HashMap;
+  use std::path::{Path, PathBuf};
+
+  use dprint_core::configuration::*;
+  use dprint_development::*;
+  use dprint_plugin_exec::configuration::Configuration;
+
   let global_config = resolve_global_config(HashMap::new(), &Default::default()).config;
 
   let mut tests_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -50,16 +50,6 @@ fn test_specs() {
         };
       }
     },
-    move |_file_name, _file_text, _spec_config| {
-      #[cfg(feature = "tracing")]
-      {
-        let config_result = resolve_config(parse_config_key_map(_spec_config), &global_config);
-        ensure_no_diagnostics(&config_result.diagnostics);
-        return "ok".to_string();
-      }
-
-      #[cfg(not(feature = "tracing"))]
-      panic!("\n====\nPlease run with `cargo test --features tracing` to get trace output\n====\n")
-    },
+    move |_file_name, _file_text, _spec_config| panic!("Not supported."),
   )
 }

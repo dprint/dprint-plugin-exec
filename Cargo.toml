@@ -1,6 +1,6 @@
 [package]
 name = "dprint-plugin-exec"
-version = "0.0.3"
+version = "0.1.0"
 authors = ["Alex Zherebtsov <zherebtsovalex@gmail.com>", "David Sherret <dsherret@gmail.com>"]
 edition = "2021"
 homepage = "https://github.com/dprint/dprint-plugin-exec"
@@ -17,19 +17,14 @@ debug-assertions = false
 overflow-checks = false
 panic = "abort"
 
-[features]
-wasm = ["serde_json"]
-tracing = ["dprint-core/tracing"]
-
 [dependencies]
 anyhow = "1.0.51"
-dprint-core = { version = "0.50.0", features = ["formatting", "process"] }
+dprint-core = { version = "0.50.0", features = ["process"] }
 
 handlebars = "4.1.6"
 serde = { version = "1.0.118", features = ["derive"] }
-serde_json = { version = "1.0", optional = true }
+splitty = "0.1.0"
 tokio = { version = "1.15.0", features = ["full", "time"] }
 
 [dev-dependencies]
 dprint-development = "0.4.1"
-serde_json = { version = "1.0" }

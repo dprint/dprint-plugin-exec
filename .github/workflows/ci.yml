@@ -15,10 +15,6 @@ jobs:
             kind: test_release
           - os: ubuntu-latest
             kind: test_release
-          - os: macOS-latest
-            kind: test_debug
-          - os: windows-2019
-            kind: test_debug
           - os: ubuntu-latest
             kind: test_debug
 
@@ -39,6 +35,9 @@ jobs:
           profile: minimal
           toolchain: 1.57.0
           override: true
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
 
       # CACHE SETUP
       - name: Cache cargo
@@ -51,13 +50,11 @@ jobs:
         run: cargo build
       - name: Build release
         if: matrix.config.kind == 'test_release'
-        run: |
-          cargo build --release --all-targets --locked --verbose
+        run: cargo build --release --all-targets --locked --verbose
 
       # TEST
       - name: Test
-        run: |
-          cargo test
+        run: cargo test
 
       # Release
       - name: Pre-release (Linux)
@@ -126,9 +123,8 @@ jobs:
           echo "Mac zip: ${{needs.build.outputs.MAC_ZIP_CHECKSUM}}"
           echo "Windows zip: ${{needs.build.outputs.WINDOWS_ZIP_CHECKSUM}}"
 
-      - uses: actions/setup-node@v2
       - name: Create plugin file
-        run: node scripts/createPluginFile.js
+        run: deno run --allow-read=. --allow-write=. scripts/createPluginFile.ts
 
       - name: Get tag version
         id: get_tag_version

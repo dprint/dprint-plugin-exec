@@ -51,7 +51,7 @@ impl PluginHandler<Configuration> for ExecHandler {
 
   fn get_license_text(&mut self) -> String {
     String::from(
-      "    The MIT License (MIT)
+      "MIT License (MIT)
 
 Copyright (c) 2022 Canva
 

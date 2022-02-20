@@ -137,7 +137,7 @@ jobs:
 
       - name: Update Config Schema Version
         # update config schema to have version
-        sed -i 's/exec\/0.0.0/exec\/${{ steps.get_tag_version.outputs.TAG_VERSION }}/' deployment/schema.json
+        run: sed -i 's/exec\/0.0.0/exec\/${{ steps.get_tag_version.outputs.TAG_VERSION }}/' deployment/schema.json
 
       - name: Release
         uses: softprops/action-gh-release@v1

@@ -1,5 +1,5 @@
 -- file.rs --
-~~ rustfmt: rustfmt, rustfmt.stdin: true, rustfmt.associations: **/*.rs ~~
+~~ rustfmt: rustfmt, rustfmt.associations: **/*.rs ~~
 == should do nothing when the association doesn't match ==
 struct   Test {    }
 

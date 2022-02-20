@@ -1,4 +1,4 @@
-~~ lineWidth: 30, fold: fold -w 30 -s, fold.stdin: true ~~
+~~ lineWidth: 30, fold: fold -w 30 -s ~~
 == Process returns the formatted text via stdout ==
 this should be wrapped because it is a long text
 

@@ -1,5 +1,5 @@
 -- resources/multi-line.txt --
-~~ lineWidth: 42, executable: fold, args: -w {{line_width}} -s {{file_path}} ~~
+~~ lineWidth: 42, fold: fold -w {{line_width}} -s {{file_path}} ~~
 == Long text ==
 // does not matter
 

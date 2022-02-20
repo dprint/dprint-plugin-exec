@@ -1,4 +1,4 @@
-~~ lineWidth: 35, timeout: 3, executable: fold, args: -w {{line_width}} -s, stdin: true ~~
+~~ lineWidth: 35, timeout: 3, fold: fold -w {{line_width}} -s, fold.stdin: true ~~
 == Long text ==
 
 

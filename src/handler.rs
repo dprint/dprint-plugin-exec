@@ -15,7 +15,7 @@ use tokio::sync::oneshot::{self, Receiver, Sender};
 use tokio::time::error::Elapsed;
 use tokio::time::timeout;
 
-use crate::configuration::Configuration;
+use crate::configuration::{BinaryConfiguration, Configuration};
 
 pub struct ExecHandler;
 
@@ -93,14 +93,16 @@ pub async fn format_text(
   config: &Configuration,
   mut _format_with_host: impl FnMut(&Path, String, &ConfigKeyMap) -> Result<String>,
 ) -> Result<String> {
+  // todo: actually select a binary
+  let binary = &config.binaries[0];
   // format here
-  let args = maybe_substitute_variables(file_path, file_text, &config);
+  let args = maybe_substitute_variables(file_path, file_text, &config, &binary);
 
-  let mut child = Command::new(&config.executable)
+  let mut child = Command::new(&binary.executable)
+    .current_dir(&binary.cwd)
     .kill_on_drop(true)
-    .current_dir(&config.exe_dir_path)
     .stdout(Stdio::piped())
-    .stdin(if config.stdin {
+    .stdin(if binary.stdin {
       Stdio::piped()
     } else {
       Stdio::null()
@@ -127,7 +129,7 @@ pub async fn format_text(
   }
 
   // write file text into child's stdin
-  if config.stdin {
+  if binary.stdin {
     child
       .stdin
       .take()
@@ -194,6 +196,7 @@ fn maybe_substitute_variables(
   file_path: &Path,
   file_text: &str,
   config: &Configuration,
+  binary: &BinaryConfiguration,
 ) -> Vec<String> {
   let mut handlebars = Handlebars::new();
   handlebars.set_strict_mode(true);
@@ -206,25 +209,25 @@ fn maybe_substitute_variables(
     use_tabs: bool,
     indent_width: u8,
     new_line_kind: NewLineKind,
-    exe_dir_path: String,
+    cwd: String,
     stdin: bool,
     timeout: u32,
   }
 
   let vars = TemplateVariables {
-    file_path: file_path.to_str().map(String::from).unwrap(),
+    file_path: file_path.to_string_lossy().to_string(),
     file_text: String::from(file_text),
     line_width: config.line_width,
     use_tabs: config.use_tabs,
     indent_width: config.indent_width,
     new_line_kind: config.new_line_kind,
-    exe_dir_path: config.exe_dir_path.to_str().map(String::from).unwrap(),
-    stdin: config.stdin,
+    cwd: binary.cwd.to_string_lossy().to_string(),
+    stdin: binary.stdin,
     timeout: config.timeout,
   };
 
   let mut c_args = vec![];
-  for arg in &config.args {
+  for arg in &binary.args {
     let formatted = handlebars
       .render_template(arg, &vars)
       .expect(format!("Cannot format: {}", arg).as_str());

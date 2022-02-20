@@ -19,7 +19,7 @@ panic = "abort"
 
 [dependencies]
 anyhow = "1.0.51"
-dprint-core = { version = "0.50.0", features = ["process"] }
+dprint-core = { version = "0.50.1", features = ["process"] }
 
 handlebars = "4.1.6"
 serde = { version = "1.0.118", features = ["derive"] }

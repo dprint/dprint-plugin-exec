@@ -1,6 +1,7 @@
 use dprint_core::configuration::{
-  get_unknown_property_diagnostics, get_value, ConfigKeyMap, ConfigurationDiagnostic,
-  GlobalConfiguration, NewLineKind, ResolveConfigurationResult, DEFAULT_GLOBAL_CONFIGURATION,
+  get_nullable_value, get_unknown_property_diagnostics, get_value, ConfigKeyMap,
+  ConfigurationDiagnostic, GlobalConfiguration, NewLineKind, ResolveConfigurationResult,
+  DEFAULT_GLOBAL_CONFIGURATION,
 };
 use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
@@ -14,12 +15,19 @@ pub struct Configuration {
   pub indent_width: u8,
   pub new_line_kind: NewLineKind,
   /// Formatting program to run
+  pub binaries: Vec<BinaryConfiguration>,
+  pub timeout: u32,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BinaryConfiguration {
   pub executable: String,
-  pub exe_dir_path: PathBuf,
-  pub stdin: bool,
+  pub cwd: PathBuf,
   /// Executable arguments to add
   pub args: Vec<String>,
-  pub timeout: u32,
+  pub stdin: bool,
+  pub associations: String,
 }
 
 impl Configuration {
@@ -52,7 +60,7 @@ impl Configuration {
     let mut diagnostics = vec![];
     let mut config = config;
 
-    let resolved_config = Configuration {
+    let mut resolved_config = Configuration {
       line_width: get_value(
         &mut config,
         "lineWidth",
@@ -85,43 +93,70 @@ impl Configuration {
           .unwrap_or(DEFAULT_GLOBAL_CONFIGURATION.new_line_kind),
         &mut diagnostics,
       ),
-      executable: get_value(
-        &mut config,
-        "executable",
-        String::default(),
-        &mut diagnostics,
-      ),
-      exe_dir_path: Configuration::get_exe_dir_path(get_value(
-        &mut config,
-        "execDirPath",
-        String::default(),
-        &mut diagnostics,
-      )),
-      stdin: get_value(&mut config, "stdin", false, &mut diagnostics),
+      binaries: Vec::new(),
       timeout: get_value(&mut config, "timeout", 30, &mut diagnostics),
-      args: splitty::split_unquoted_whitespace(&get_value(
+    };
+
+    // the rest of the configuration values are for plugins
+    let binary_keys = config
+      .keys()
+      .filter(|c| !c.contains('.'))
+      .cloned()
+      .collect::<Vec<_>>();
+    for binary_key in binary_keys {
+      let mut command = splitty::split_unquoted_whitespace(&get_value(
         &mut config,
-        "args",
+        &binary_key,
         String::default(),
         &mut diagnostics,
       ))
       .unwrap_quotes(true)
       .filter(|p| !p.is_empty())
       .map(String::from)
-      .collect(),
-    };
+      .collect::<Vec<_>>();
+      if command.is_empty() {
+        diagnostics.push(ConfigurationDiagnostic {
+          property_name: binary_key.to_string(),
+          message: "Expected to find a command name.".to_string(),
+        });
+        continue;
+      }
+      resolved_config.binaries.push(BinaryConfiguration {
+        executable: command.remove(0),
+        args: command,
+        associations: get_value(
+          &mut config,
+          &format!("{}.associations", binary_key),
+          String::default(),
+          &mut diagnostics,
+        ),
+        cwd: get_cwd(get_nullable_value(
+          &mut config,
+          &format!("{}.cwd", binary_key),
+          &mut diagnostics,
+        )),
+        stdin: get_value(
+          &mut config,
+          &format!("{}.stdin", binary_key),
+          false,
+          &mut diagnostics,
+        ),
+      });
+    }
 
     let mut handlebars = Handlebars::new();
     handlebars.set_strict_mode(true);
 
-    for arg in &resolved_config.args {
-      if let Err(e) = handlebars.register_template_string("tmp", arg) {
-        diagnostics.push(ConfigurationDiagnostic {
-          property_name: "args".to_string(),
-          message: format!("Invalid template: {}", e).to_string(),
-        })
+    for binary in &resolved_config.binaries {
+      for arg in &binary.args {
+        if let Err(e) = handlebars.register_template_string("tmp", arg) {
+          diagnostics.push(ConfigurationDiagnostic {
+            property_name: "args".to_string(),
+            message: format!("Invalid template: {}", e),
+          });
+        }
+        handlebars.unregister_template("tmp");
       }
-      handlebars.unregister_template("tmp");
     }
 
     diagnostics.extend(get_unknown_property_diagnostics(config));
@@ -131,19 +166,14 @@ impl Configuration {
       diagnostics,
     }
   }
+}
 
-  fn get_exe_dir_path(dir: String) -> PathBuf {
-    if dir.is_empty() {
-      return std::env::current_exe()
-        .expect("expected to get the executable file path")
-        .parent()
-        .expect("expected to get executable directory path")
-        .to_path_buf();
-    }
-    PathBuf::from(dir)
-      .parent()
-      .expect("expected to get executable directory path")
-      .into()
+fn get_cwd(dir: Option<String>) -> PathBuf {
+  match dir {
+    Some(dir) => PathBuf::from(dir),
+    None => std::env::current_dir()
+      .expect("should get cwd")
+      .to_path_buf(),
   }
 }
 

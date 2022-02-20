@@ -174,9 +174,10 @@ jobs:
                    "associations": [
                        "**/*.java"
                    ],
-                   "executable": "java",
+                   "java": "java -jar formatter.jar {{file_path}}",
+                   "rustfmt": "rustfmt",
+                   "rustfmt.associations": "**/*.rs",
                    "timeout": 10,
-                   "args": "-jar formatter.jar {{file_path}}"
                  },
                }
                ```

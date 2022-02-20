@@ -29,16 +29,16 @@ fn test_specs() {
           Configuration::resolve(parse_config_key_map(spec_config), &Default::default());
         ensure_no_diagnostics(&config_result.diagnostics);
 
-        let mut file = file_name;
+        let mut file = file_name.to_path_buf();
         let mut td = tests_dir.clone();
         if !file_name.ends_with(Path::new("default.txt")) {
           td.push(file_name);
-          file = td.as_path().clone();
+          file = td.clone();
         }
 
         dprint_plugin_exec::handler::format_text(
-          file,
-          &file_text,
+          &file,
+          file_text,
           &config_result.config,
           |_, _, _| Result::Ok(String::from("")),
         )

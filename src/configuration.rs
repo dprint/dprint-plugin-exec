@@ -3,13 +3,16 @@ use dprint_core::configuration::{
   ConfigurationDiagnostic, GlobalConfiguration, NewLineKind, ResolveConfigurationResult,
   DEFAULT_GLOBAL_CONFIGURATION,
 };
+use globset::GlobMatcher;
 use handlebars::Handlebars;
-use serde::{Deserialize, Serialize};
+use serde::{Serialize, Serializer};
 use std::path::PathBuf;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Configuration {
+  /// Doesn't allow formatting unless the configuration had no diagnostics.
+  pub is_valid: bool,
   pub line_width: u32,
   pub use_tabs: bool,
   pub indent_width: u8,
@@ -19,7 +22,7 @@ pub struct Configuration {
   pub timeout: u32,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BinaryConfiguration {
   pub executable: String,
@@ -27,7 +30,15 @@ pub struct BinaryConfiguration {
   /// Executable arguments to add
   pub args: Vec<String>,
   pub stdin: bool,
-  pub associations: String,
+  #[serde(serialize_with = "serialize_glob")]
+  pub associations: Option<GlobMatcher>,
+}
+
+fn serialize_glob<S: Serializer>(value: &Option<GlobMatcher>, s: S) -> Result<S::Ok, S::Error> {
+  match value {
+    Some(value) => s.serialize_str(value.glob().glob()),
+    None => s.serialize_none(),
+  }
 }
 
 impl Configuration {
@@ -61,6 +72,7 @@ impl Configuration {
     let mut config = config;
 
     let mut resolved_config = Configuration {
+      is_valid: true,
       line_width: get_value(
         &mut config,
         "lineWidth",
@@ -124,12 +136,47 @@ impl Configuration {
       resolved_config.binaries.push(BinaryConfiguration {
         executable: command.remove(0),
         args: command,
-        associations: get_value(
-          &mut config,
-          &format!("{}.associations", binary_key),
-          String::default(),
-          &mut diagnostics,
-        ),
+        associations: {
+          let associations_key = format!("{}.associations", binary_key);
+          let value: Option<String> =
+            get_nullable_value(&mut config, &associations_key, &mut diagnostics);
+          match value {
+            Some(value) => {
+              let mut builder = globset::GlobBuilder::new(&value);
+              builder.case_insensitive(cfg!(windows));
+              match builder.build() {
+                Ok(glob) => Some(glob.compile_matcher()),
+                Err(err) => {
+                  diagnostics.push(ConfigurationDiagnostic {
+                    message: format!("Error parsing associations glob: {}", err),
+                    property_name: associations_key,
+                  });
+                  None
+                }
+              }
+            }
+            None => {
+              if resolved_config
+                .binaries
+                .iter()
+                .any(|b| b.associations.is_none())
+              {
+                diagnostics.push(ConfigurationDiagnostic {
+                  property_name: associations_key.to_string(),
+                  message: format!(
+                    concat!(
+                      "A \"{0}\" configuration key must be provided because another ",
+                      "formatting binary is specified without an associations key. ",
+                      "(Example: `\"{0}\": \"**/*.rs\"` would format .rs files with this binary)"
+                    ),
+                    associations_key,
+                  ),
+                })
+              }
+              None
+            }
+          }
+        },
         cwd: get_cwd(get_nullable_value(
           &mut config,
           &format!("{}.cwd", binary_key),
@@ -160,6 +207,8 @@ impl Configuration {
     }
 
     diagnostics.extend(get_unknown_property_diagnostics(config));
+
+    resolved_config.is_valid = diagnostics.is_empty();
 
     ResolveConfigurationResult {
       config: resolved_config,

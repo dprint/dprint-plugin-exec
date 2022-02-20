@@ -12,7 +12,7 @@ fn main() -> Result<()> {
   handle_process_stdio_messages(ExecHandler)
 }
 
-fn get_parent_process_id_from_args(args: &Vec<String>) -> u32 {
+fn get_parent_process_id_from_args(args: &[String]) -> u32 {
   for i in 0..args.len() {
     if args[i] == "--parent-pid" {
       if let Some(parent_pid) = args.get(i + 1) {

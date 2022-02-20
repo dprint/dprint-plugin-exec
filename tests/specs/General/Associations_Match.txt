@@ -1,6 +1,6 @@
 -- resources/test.txt --
 ~~ lineWidth: 35, fold: fold -w {{line_width}} -s, fold.stdin: true, fold.associations: **/*.txt ~~
-== should do nothing when the association doesn't match ==
+== should format when the association matches ==
 Testing this out with some very very long text testing testing testing testing testing.
 
 [expect]

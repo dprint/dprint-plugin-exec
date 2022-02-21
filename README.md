@@ -64,7 +64,7 @@ Command config:
 Command templates (ex. see the prettier example above):
 
 - `{{file_path}}` - File path being formatted.
-- `{{file_text}}` - File text being formatted. Use `{{{file_text}}}` to avoid HTML character escaping (default behaviour of [handlebars](https://docs.rs/handlebars/latest/handlebars/) template engine)
+- `{{file_text}}` - File text being formatted. Use `{{{file_text}}}` to avoid HTML characters escaping (default behaviour of [handlebars](https://docs.rs/handlebars/latest/handlebars/) template engine)
 - `{{line_width}}` - Configured line width.
 - `{{use_tabs}}` - Whether tabs should be used.
 - `{{indent_width}}` - Whether tabs should be used.

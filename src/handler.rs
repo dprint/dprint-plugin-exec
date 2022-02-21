@@ -28,7 +28,7 @@ use tokio::sync::oneshot::Sender;
 use tokio::time::error::Elapsed;
 use tokio::time::timeout;
 
-use crate::configuration::BinaryConfiguration;
+use crate::configuration::CommandConfiguration;
 use crate::configuration::Configuration;
 
 pub struct ExecHandler;
@@ -108,15 +108,15 @@ pub async fn format_text(
   mut _format_with_host: impl FnMut(&Path, String, &ConfigKeyMap) -> Result<String>,
 ) -> Result<String> {
   let mut file_text = file_text.to_string();
-  for binary in select_binaries(config, file_path)? {
+  for command in select_commands(config, file_path)? {
     // format here
-    let args = maybe_substitute_variables(file_path, &file_text, config, binary);
+    let args = maybe_substitute_variables(file_path, &file_text, config, command);
 
-    let mut child = Command::new(&binary.executable)
-      .current_dir(&binary.cwd)
+    let mut child = Command::new(&command.executable)
+      .current_dir(&command.cwd)
       .kill_on_drop(true)
       .stdout(Stdio::piped())
-      .stdin(if binary.stdin {
+      .stdin(if command.stdin {
         Stdio::piped()
       } else {
         Stdio::null()
@@ -143,7 +143,7 @@ pub async fn format_text(
     }
 
     // write file text into child's stdin
-    if binary.stdin {
+    if command.stdin {
       child
         .stdin
         .take()
@@ -171,27 +171,27 @@ pub async fn format_text(
   Ok(file_text)
 }
 
-fn select_binaries<'a>(
+fn select_commands<'a>(
   config: &'a Configuration,
   file_path: &Path,
-) -> Result<Vec<&'a BinaryConfiguration>> {
+) -> Result<Vec<&'a CommandConfiguration>> {
   if !config.is_valid {
     bail!("Cannot format because the configuration was not valid.");
   }
 
   let mut binaries = Vec::new();
 
-  for binary in &config.binaries {
-    if let Some(associations) = &binary.associations {
+  for command in &config.commands {
+    if let Some(associations) = &command.associations {
       if associations.is_match(file_path) {
-        binaries.push(binary);
+        binaries.push(command);
       }
     }
   }
 
   if binaries.is_empty() {
-    if let Some(binary) = config.binaries.iter().find(|b| b.associations.is_none()) {
-      binaries.push(binary);
+    if let Some(command) = config.commands.iter().find(|b| b.associations.is_none()) {
+      binaries.push(command);
     }
   }
 
@@ -240,7 +240,7 @@ fn maybe_substitute_variables(
   file_path: &Path,
   file_text: &str,
   config: &Configuration,
-  binary: &BinaryConfiguration,
+  command: &CommandConfiguration,
 ) -> Vec<String> {
   let mut handlebars = Handlebars::new();
   handlebars.set_strict_mode(true);
@@ -262,12 +262,12 @@ fn maybe_substitute_variables(
     line_width: config.line_width,
     use_tabs: config.use_tabs,
     indent_width: config.indent_width,
-    cwd: binary.cwd.to_string_lossy().to_string(),
+    cwd: command.cwd.to_string_lossy().to_string(),
     timeout: config.timeout,
   };
 
   let mut c_args = vec![];
-  for arg in &binary.args {
+  for arg in &command.args {
     let formatted = handlebars
       .render_template(arg, &vars)
       .unwrap_or_else(|err| panic!("Cannot format: {}\n\n{}", arg, err));

@@ -23,14 +23,14 @@ pub struct Configuration {
   pub use_tabs: bool,
   pub indent_width: u8,
   pub new_line_kind: NewLineKind,
-  /// Formatting program to run
-  pub binaries: Vec<BinaryConfiguration>,
+  /// Formatting commands to run
+  pub commands: Vec<CommandConfiguration>,
   pub timeout: u32,
 }
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BinaryConfiguration {
+pub struct CommandConfiguration {
   pub executable: String,
   pub cwd: PathBuf,
   /// Executable arguments to add
@@ -112,20 +112,20 @@ impl Configuration {
           .unwrap_or(DEFAULT_GLOBAL_CONFIGURATION.new_line_kind),
         &mut diagnostics,
       ),
-      binaries: Vec::new(),
+      commands: Vec::new(),
       timeout: get_value(&mut config, "timeout", 30, &mut diagnostics),
     };
 
     // the rest of the configuration values are for plugins
-    let binary_keys = config
+    let command_keys = config
       .keys()
       .filter(|c| !c.contains('.'))
       .cloned()
       .collect::<Vec<_>>();
-    for binary_key in binary_keys {
+    for command_key in command_keys {
       let mut command = splitty::split_unquoted_whitespace(&get_value(
         &mut config,
-        &binary_key,
+        &command_key,
         String::default(),
         &mut diagnostics,
       ))
@@ -135,16 +135,16 @@ impl Configuration {
       .collect::<Vec<_>>();
       if command.is_empty() {
         diagnostics.push(ConfigurationDiagnostic {
-          property_name: binary_key.to_string(),
+          property_name: command_key.to_string(),
           message: "Expected to find a command name.".to_string(),
         });
         continue;
       }
-      resolved_config.binaries.push(BinaryConfiguration {
+      resolved_config.commands.push(CommandConfiguration {
         executable: command.remove(0),
         args: command,
         associations: {
-          let associations_key = format!("{}.associations", binary_key);
+          let associations_key = format!("{}.associations", command_key);
           let value: Option<String> =
             get_nullable_value(&mut config, &associations_key, &mut diagnostics);
           match value {
@@ -164,7 +164,7 @@ impl Configuration {
             }
             None => {
               if resolved_config
-                .binaries
+                .commands
                 .iter()
                 .any(|b| b.associations.is_none())
               {
@@ -173,8 +173,8 @@ impl Configuration {
                   message: format!(
                     concat!(
                       "A \"{0}\" configuration key must be provided because another ",
-                      "formatting binary is specified without an associations key. ",
-                      "(Example: `\"{0}\": \"**/*.rs\"` would format .rs files with this binary)"
+                      "formatting command is specified without an associations key. ",
+                      "(Example: `\"{0}\": \"**/*.rs\"` would format .rs files with this command)"
                     ),
                     associations_key,
                   ),
@@ -186,12 +186,12 @@ impl Configuration {
         },
         cwd: get_cwd(get_nullable_value(
           &mut config,
-          &format!("{}.cwd", binary_key),
+          &format!("{}.cwd", command_key),
           &mut diagnostics,
         )),
         stdin: get_value(
           &mut config,
-          &format!("{}.stdin", binary_key),
+          &format!("{}.stdin", command_key),
           true,
           &mut diagnostics,
         ),
@@ -201,8 +201,8 @@ impl Configuration {
     let mut handlebars = Handlebars::new();
     handlebars.set_strict_mode(true);
 
-    for binary in &resolved_config.binaries {
-      for arg in &binary.args {
+    for command in &resolved_config.commands {
+      for arg in &command.args {
         if let Err(e) = handlebars.register_template_string("tmp", arg) {
           diagnostics.push(ConfigurationDiagnostic {
             property_name: "args".to_string(),
@@ -272,11 +272,11 @@ mod tests {
 
   #[test]
   fn empty_command_name() {
-    let config = ConfigKeyMap::from([("binary1".to_string(), ConfigKeyValue::from_str(""))]);
+    let config = ConfigKeyMap::from([("command1".to_string(), ConfigKeyValue::from_str(""))]);
     run_diagnostics_test(
       config,
       vec![ConfigurationDiagnostic {
-        property_name: "binary1".to_string(),
+        property_name: "command1".to_string(),
         message: "Expected to find a command name.".to_string(),
       }],
     )
@@ -285,27 +285,27 @@ mod tests {
   #[test]
   fn multiple_binaries_no_associations() {
     let config = ConfigKeyMap::from([
-      ("binary1".to_string(), ConfigKeyValue::from_str("binary1")),
-      ("binary2".to_string(), ConfigKeyValue::from_str("binary2")),
-      ("binary3".to_string(), ConfigKeyValue::from_str("binary3")),
+      ("command1".to_string(), ConfigKeyValue::from_str("command1")),
+      ("command2".to_string(), ConfigKeyValue::from_str("command2")),
+      ("command3".to_string(), ConfigKeyValue::from_str("command3")),
     ]);
     run_diagnostics_test(
       config,
       vec![
         ConfigurationDiagnostic {
-          property_name: "binary2.associations".to_string(),
+          property_name: "command2.associations".to_string(),
           message: concat!(
-            "A \"binary2.associations\" configuration key must be provided because another formatting ",
-            "binary is specified without an associations key. (Example: `\"binary2.associations\": \"**/*.rs\"` ",
-            "would format .rs files with this binary)"
+            "A \"command2.associations\" configuration key must be provided because another formatting ",
+            "command is specified without an associations key. (Example: `\"command2.associations\": \"**/*.rs\"` ",
+            "would format .rs files with this command)"
           ).to_string(),
         },
         ConfigurationDiagnostic {
-          property_name: "binary3.associations".to_string(),
+          property_name: "command3.associations".to_string(),
           message: concat!(
-            "A \"binary3.associations\" configuration key must be provided because another formatting ",
-            "binary is specified without an associations key. (Example: `\"binary3.associations\": \"**/*.rs\"` ",
-            "would format .rs files with this binary)"
+            "A \"command3.associations\" configuration key must be provided because another formatting ",
+            "command is specified without an associations key. (Example: `\"command3.associations\": \"**/*.rs\"` ",
+            "would format .rs files with this command)"
           ).to_string(),
         },
       ],

@@ -48,7 +48,7 @@
       }]
     },
     "cacheKey": {
-      "description": "Optional value used to bust dprint's incremental cache (ex. provide \"1\"). This is useful if you want to force formatting to occur because the underlying binary has changed.",
+      "description": "Optional value used to bust dprint's incremental cache (ex. provide \"1\"). This is useful if you want to force formatting to occur because the underlying command has changed.",
       "type": "string"
     },
     "timeout": {

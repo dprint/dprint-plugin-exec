@@ -14,7 +14,7 @@ This plugin executes CLI commands to format code via stdin (recommended) or via 
 The configuration for dprint-plugin-exec is more complicated than most dprint plugins due to its nature.
 
 1. Specify an includes pattern in dprint's config.
-1. Specify an ["associations"](https://dprint.dev/config/#associations) property in the plugin config in order to get the files that match that pattern to format with this exec plugin.
+1. Specify an [`"associations"`](https://dprint.dev/config/#associations) property in the plugin config in order to get the files that match that pattern to format with this exec plugin.
 1. Add general configuration if desired (shown below).
 1. Add binaries similar to what's shown below and specify what file patterns they match via a `<command-name>.associations` property.
    - You may omit this from one command in order to make any file pattern that doesn't match another command to be formatted with this command.
@@ -24,7 +24,7 @@ The configuration for dprint-plugin-exec is more complicated than most dprint pl
 {
   // ...etc...
   "exec": {
-    "associations": "**/*.{rs,js}",
+    "associations": "**/*.{rs,js,html,ts,js}",
 
     // general config (optional -- shown are the defaults)
     "lineWidth": 120,

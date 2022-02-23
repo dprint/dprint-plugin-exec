@@ -110,7 +110,7 @@ pub async fn format_text(
   let mut file_text = file_text.to_string();
   for command in select_commands(config, file_path)? {
     // format here
-    let args = maybe_substitute_variables(file_path, &file_text, config, command);
+    let args = maybe_substitute_variables(file_path, config, command);
 
     let mut child = Command::new(&command.executable)
       .current_dir(&command.cwd)
@@ -238,7 +238,6 @@ where
 
 fn maybe_substitute_variables(
   file_path: &Path,
-  file_text: &str,
   config: &Configuration,
   command: &CommandConfiguration,
 ) -> Vec<String> {
@@ -246,9 +245,8 @@ fn maybe_substitute_variables(
   handlebars.set_strict_mode(true);
 
   #[derive(Clone, Serialize, Deserialize)]
-  struct TemplateVariables<'a> {
+  struct TemplateVariables {
     file_path: String,
-    file_text: &'a str,
     line_width: u32,
     use_tabs: bool,
     indent_width: u8,
@@ -258,7 +256,6 @@ fn maybe_substitute_variables(
 
   let vars = TemplateVariables {
     file_path: file_path.to_string_lossy().to_string(),
-    file_text,
     line_width: config.line_width,
     use_tabs: config.use_tabs,
     indent_width: config.indent_width,

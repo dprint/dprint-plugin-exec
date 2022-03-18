@@ -64,7 +64,6 @@ Command config:
 Command templates (ex. see the prettier example above):
 
 - `{{file_path}}` - File path being formatted.
-- `{{file_text}}` - File text being formatted.
 - `{{line_width}}` - Configured line width.
 - `{{use_tabs}}` - Whether tabs should be used.
 - `{{indent_width}}` - Whether tabs should be used.

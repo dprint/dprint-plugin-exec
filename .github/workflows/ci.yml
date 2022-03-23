@@ -178,7 +178,7 @@ jobs:
             Dependencies:
 
             1. Install python and ensure it's on the path.
-            2. Install dprint's CLI >= 0.19.1
+            2. Install dprint's CLI >= 0.24.0
 
             In dprint configuration file:
 

@@ -8,11 +8,11 @@ if (!/^\d+\.\d+\.\d+$/.test(version)) {
 }
 
 const outputFile = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   name: pluginName,
   version,
-  "mac-x86_64": await getPlatformObject(`${pluginName}-x86_64-apple-darwin.zip`),
-  "mac-aarch64": await getPlatformObject(`${pluginName}-aarch64-apple-darwin.zip`),
+  "darwin-x86_64": await getPlatformObject(`${pluginName}-x86_64-apple-darwin.zip`),
+  "darwin-aarch64": await getPlatformObject(`${pluginName}-aarch64-apple-darwin.zip`),
   "linux-x86_64": await getPlatformObject(`${pluginName}-x86_64-unknown-linux-gnu.zip`),
   "windows-x86_64": await getPlatformObject(`${pluginName}-x86_64-pc-windows-msvc.zip`),
 };

@@ -1,6 +1,8 @@
+use std::borrow::Cow;
 use std::path::Path;
 use std::process::ExitStatus;
 use std::process::Stdio;
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::anyhow;
@@ -12,7 +14,12 @@ use dprint_core::configuration::ConfigKeyMap;
 use dprint_core::configuration::GlobalConfiguration;
 use dprint_core::configuration::NewLineKind;
 use dprint_core::configuration::ResolveConfigurationResult;
-use dprint_core::plugins::PluginHandler;
+use dprint_core::plugins::AsyncPluginHandler;
+use dprint_core::plugins::BoxFuture;
+use dprint_core::plugins::CancellationToken;
+use dprint_core::plugins::FormatRequest;
+use dprint_core::plugins::FormatResult;
+use dprint_core::plugins::Host;
 use dprint_core::plugins::PluginInfo;
 use handlebars::Handlebars;
 use serde::Deserialize;
@@ -25,24 +32,16 @@ use tokio::process::Command;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Receiver;
 use tokio::sync::oneshot::Sender;
-use tokio::time::error::Elapsed;
-use tokio::time::timeout;
 
 use crate::configuration::CommandConfiguration;
 use crate::configuration::Configuration;
 
 pub struct ExecHandler;
 
-impl PluginHandler<Configuration> for ExecHandler {
-  fn resolve_config(
-    &mut self,
-    config: ConfigKeyMap,
-    global_config: &GlobalConfiguration,
-  ) -> ResolveConfigurationResult<Configuration> {
-    Configuration::resolve(config, global_config)
-  }
+impl AsyncPluginHandler for ExecHandler {
+  type Configuration = Configuration;
 
-  fn get_plugin_info(&mut self) -> PluginInfo {
+  fn plugin_info(&self) -> PluginInfo {
     let name = env!("CARGO_PKG_NAME").to_string();
     let version = env!("CARGO_PKG_VERSION").to_string();
     PluginInfo {
@@ -63,51 +62,52 @@ impl PluginHandler<Configuration> for ExecHandler {
     }
   }
 
-  fn get_license_text(&mut self) -> String {
-    String::from(
-      "MIT License (MIT)
-
-Copyright (c) 2022 Canva
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the \"Software\"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.",
-    )
+  fn license_text(&self) -> String {
+    include_str!("../LICENSE").to_string()
   }
 
-  fn format_text(
-    &mut self,
-    file_path: &Path,
-    file_text: &str,
-    config: &Configuration,
-    mut _format_with_host: impl FnMut(&Path, String, &ConfigKeyMap) -> Result<String>,
-  ) -> Result<String> {
-    format_text(file_path, file_text, config, _format_with_host)
+  fn resolve_config(
+    &self,
+    config: ConfigKeyMap,
+    global_config: GlobalConfiguration,
+  ) -> ResolveConfigurationResult<Configuration> {
+    Configuration::resolve(config, &global_config)
+  }
+
+  fn format(
+    &self,
+    request: FormatRequest<Self::Configuration>,
+    _host: Arc<dyn Host>,
+  ) -> BoxFuture<FormatResult> {
+    Box::pin(async move {
+      if request.range.is_some() {
+        // we don't support range formatting for this plugin
+        return Ok(None);
+      }
+
+      let result = format_text(
+        &request.file_path,
+        &request.file_text,
+        &request.config,
+        request.token.clone(),
+      )?;
+      Ok(if result == request.file_text {
+        None
+      } else {
+        Some(result.to_string())
+      })
+    })
   }
 }
 
 #[tokio::main]
-pub async fn format_text(
+pub async fn format_text<'a>(
   file_path: &Path,
-  file_text: &str,
+  original_file_text: &'a str,
   config: &Configuration,
-  mut _format_with_host: impl FnMut(&Path, String, &ConfigKeyMap) -> Result<String>,
-) -> Result<String> {
-  let mut file_text = file_text.to_string();
+  token: Arc<dyn CancellationToken>,
+) -> Result<Cow<'a, str>> {
+  let mut file_text: Cow<'a, str> = Cow::Borrowed(original_file_text);
   for command in select_commands(config, file_path)? {
     // format here
     let args = maybe_substitute_variables(file_path, config, command);
@@ -158,15 +158,26 @@ pub async fn format_text(
     // make progress on its own while we await for any output.
     let child_completed = tokio::spawn(async move {
       match child.wait().await {
-        Ok(status) => status,
-        Err(e) => panic!("Error while waiting for formatter to complete: {}", e),
+        Ok(status) => Ok(status),
+        Err(e) => Err(anyhow!(
+          "Error while waiting for formatter to complete: {}",
+          e
+        )),
       }
     });
 
-    file_text = match timeout(Duration::from_secs(config.timeout as u64), out_rx).await {
-      Ok(result) => handle_child_exit_status(result?, err_rx, child_completed.await?).await,
-      Err(e) => Err(timeout_err(config, e)),
-    }?;
+    tokio::select! {
+      _ = token.wait_cancellation() => {
+        // return back the original text when cancelled
+        return Ok(Cow::Borrowed(original_file_text));
+      }
+      _ = tokio::time::sleep(Duration::from_secs(config.timeout as u64)) => {
+        return Err(timeout_err(config));
+      }
+      result = out_rx => {
+        file_text = Cow::Owned(handle_child_exit_status(result?, err_rx, child_completed.await??).await?)
+      }
+    }
   }
   Ok(file_text)
 }
@@ -215,11 +226,10 @@ async fn handle_child_exit_status(
   ));
 }
 
-fn timeout_err(config: &Configuration, e: Elapsed) -> Error {
+fn timeout_err(config: &Configuration) -> Error {
   anyhow!(
-    "Child process has not returned a result within {} seconds. {}",
+    "Child process has not returned a result within {} seconds.",
     config.timeout,
-    e
   )
 }
 

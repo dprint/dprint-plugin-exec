@@ -141,16 +141,17 @@ dependencies = [
 [[package]]
 name = "dprint-core"
 version = "0.51.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "036819ad3d310aef6ec2d2bacb83a4815f24e2ce715b68afc73ef395f392ae9f"
 dependencies = [
  "anyhow",
  "bumpalo",
  "indexmap",
  "libc",
+ "parking_lot",
  "rustc-hash",
  "serde",
  "serde_json",
+ "tokio",
+ "tokio-util",
  "winapi",
 ]
 
@@ -198,6 +199,18 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "futures-core"
+version = "0.3.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c09fd04b7e4073ac7156a9539b57a484a8ea920f79c7c675d05d289ab6110d3"
+
+[[package]]
+name = "futures-sink"
+version = "0.3.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21163e139fa306126e6eedaf49ecdb4588f939600f0b1e770f4205ee4b7fa868"
 
 [[package]]
 name = "generic-array"
@@ -654,6 +667,20 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tokio-util"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64910e1b9c1901aaf5375561e35b9c057d95ff41a44ede043a03e09279eabaf1"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "futures-sink",
+ "log",
+ "pin-project-lite",
+ "tokio",
 ]
 
 [[package]]

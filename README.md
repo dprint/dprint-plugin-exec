@@ -24,7 +24,7 @@ The configuration for dprint-plugin-exec is more complicated than most dprint pl
 {
   // ...etc...
   "exec": {
-    "associations": "**/*.{rs,js,html,ts,js}",
+    "associations": "**/*.{rs,java,py}",
 
     // general config (optional -- shown are the defaults)
     "lineWidth": 120,
@@ -41,10 +41,11 @@ The configuration for dprint-plugin-exec is more complicated than most dprint pl
     "java": "java -jar formatter.jar {{file_path}}",
     "java.associations": "**/*.java",
 
-    "prettier": "prettier --stdin-filepath {{file_path}} --tab-width {{indent_width}} --print-width {{line_width}}"
+    "yapf": "yapf",
+    "yapf.associations": "**/*.py"
   },
   "includes": [
-    "**/*.{rs,java,html,ts,js}"
+    "**/*.{rs,java,py}"
   ]
 }
 ```
@@ -58,6 +59,7 @@ Command config:
 
 - `<command-name>` - Command to execute.
 - `<command-name>.associations` - File patterns to format with this command.
+  - You may exclude this from one command to make it become the "catch-all"
 - `<command-name>.stdin` - If the text should be provided via stdin (default: `true`)
 - `<command-name>.cwd` - Current working directory to use when launching this command (default: dprint's cwd)
 
@@ -69,3 +71,76 @@ Command templates (ex. see the prettier example above):
 - `{{indent_width}}` - Whether tabs should be used.
 - `{{cwd}}` - Current working directory.
 - `{{timeout}}` - Specified timeout in seconds.
+
+### Example - yapf
+
+```jsonc
+{
+  // ...etc...
+  "exec": {
+    "associations": "**/*.{py}",
+
+    "yapf": "yapf",
+    "yapf.associations": "**/*.py"
+  },
+  "includes": [
+    "**/*.{py}"
+  ]
+}
+```
+
+### Example - java
+
+```jsonc
+{
+  // ...etc...
+  "exec": {
+    "associations": "**/*.{java}",
+
+    "java": "java -jar formatter.jar {{file_path}}",
+    "java.associations": "**/*.java"
+  },
+  "includes": [
+    "**/*.{java}"
+  ]
+}
+```
+
+### Example - rustfmt
+
+You may also consider [dprint-plugin-rustfmt](https://dprint.dev/plugins/rustfmt/), which will be pinned to a specific version and be slightly faster.
+
+```jsonc
+{
+  // ...etc...
+  "exec": {
+    "associations": "**/*.{rs}",
+
+    "rustfmt": "rustfmt",
+    "rustfmt.associations": "**/*.rs"
+  },
+  "includes": [
+    "**/*.{rs}"
+  ]
+}
+```
+
+### Example - prettier
+
+Consider using [dprint-plugin-prettier](https://dprint.dev/plugins/prettier/) instead as it will be much faster.
+
+```jsonc
+{
+  // ...etc...
+  "exec": {
+    // add more extensions that prettier should format
+    "associations": "**/*.{js,ts,html}",
+
+    "prettier": "prettier --stdin-filepath {{file_path}} --tab-width {{indent_width}} --print-width {{line_width}}"
+  },
+  "includes": [
+    // add more extensions that prettier should format
+    "**/*.{js,ts,html}"
+  ]
+}
+```

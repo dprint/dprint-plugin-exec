@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::ExitStatus;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -85,32 +86,27 @@ impl AsyncPluginHandler for ExecHandler {
         return Ok(None);
       }
 
-      let result = format_text(
-        &request.file_path,
-        &request.file_text,
-        &request.config,
+      format_text(
+        request.file_path,
+        request.file_text,
+        request.config,
         request.token.clone(),
-      )?;
-      Ok(if result == request.file_text {
-        None
-      } else {
-        Some(result.to_string())
-      })
+      )
+      .await
     })
   }
 }
 
-#[tokio::main]
-pub async fn format_text<'a>(
-  file_path: &Path,
-  original_file_text: &'a str,
-  config: &Configuration,
+pub async fn format_text(
+  file_path: PathBuf,
+  original_file_text: String,
+  config: Arc<Configuration>,
   token: Arc<dyn CancellationToken>,
-) -> Result<Cow<'a, str>> {
-  let mut file_text: Cow<'a, str> = Cow::Borrowed(original_file_text);
-  for command in select_commands(config, file_path)? {
+) -> FormatResult {
+  let mut file_text: Cow<str> = Cow::Borrowed(&original_file_text);
+  for command in select_commands(&config, &file_path)? {
     // format here
-    let args = maybe_substitute_variables(file_path, config, command);
+    let args = maybe_substitute_variables(&file_path, &config, command);
 
     let mut child = Command::new(&command.executable)
       .current_dir(&command.cwd)
@@ -169,17 +165,22 @@ pub async fn format_text<'a>(
     tokio::select! {
       _ = token.wait_cancellation() => {
         // return back the original text when cancelled
-        return Ok(Cow::Borrowed(original_file_text));
+        return Ok(None);
       }
       _ = tokio::time::sleep(Duration::from_secs(config.timeout as u64)) => {
-        return Err(timeout_err(config));
+        return Err(timeout_err(&config));
       }
       result = out_rx => {
         file_text = Cow::Owned(handle_child_exit_status(result?, err_rx, child_completed.await??).await?)
       }
     }
   }
-  Ok(file_text)
+
+  Ok(if file_text == original_file_text {
+    None
+  } else {
+    Some(file_text.to_string())
+  })
 }
 
 fn select_commands<'a>(

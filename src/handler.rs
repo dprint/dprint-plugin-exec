@@ -146,7 +146,7 @@ pub async fn format_text(
         .ok_or_else(|| anyhow!("Cannot open formatter stdin"))?
         .write_all(file_text.as_bytes())
         .await
-        .map_err(|_| anyhow!("Cannot write into formatter stdin"))
+        .map_err(|err| anyhow!("Cannot write into formatter stdin. {}", err))
         .unwrap();
     }
 

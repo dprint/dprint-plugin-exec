@@ -146,7 +146,7 @@ jobs:
           echo "Windows x86_64 zip: ${{needs.build.outputs.WINDOWS_X86_64_ZIP_CHECKSUM}}"
 
       - name: Create plugin file
-        run: deno run --allow-read=. --allow-write=. scripts/createPluginFile.ts
+        run: deno run --allow-read=. --allow-write=. scripts/create_plugin_file.ts
 
       - name: Get tag version
         id: get_tag_version
@@ -177,8 +177,7 @@ jobs:
 
             Dependencies:
 
-            1. Install python and ensure it's on the path.
-            2. Install dprint's CLI >= 0.19.1
+            - Install dprint's CLI >= 0.24.0
 
             In dprint configuration file:
 

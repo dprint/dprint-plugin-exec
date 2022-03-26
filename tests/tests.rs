@@ -6,6 +6,7 @@ extern crate dprint_plugin_exec;
 fn test_specs() {
   use std::path::Path;
   use std::path::PathBuf;
+  use std::sync::Arc;
 
   use dprint_core::configuration::*;
   use dprint_development::*;
@@ -13,6 +14,13 @@ fn test_specs() {
 
   let mut tests_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
   tests_dir.push("tests");
+
+  let runtime = tokio::runtime::Builder::new_multi_thread()
+    .enable_time()
+    .enable_io()
+    .build()
+    .unwrap();
+  let handle = runtime.handle().clone();
 
   run_specs(
     &PathBuf::from("./tests/specs"),
@@ -36,12 +44,15 @@ fn test_specs() {
           file = td.clone();
         }
 
-        dprint_plugin_exec::handler::format_text(
-          &file,
-          file_text,
-          &config_result.config,
-          |_, _, _| Result::Ok(String::from("")),
-        )
+        handle.block_on(async {
+          dprint_plugin_exec::handler::format_text(
+            file,
+            file_text.to_string(),
+            Arc::new(config_result.config),
+            Arc::new(dprint_core::plugins::NullCancellationToken),
+          )
+          .await
+        })
       }
     },
     move |_file_name, _file_text, _spec_config| panic!("Not supported."),

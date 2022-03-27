@@ -114,6 +114,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-channel"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5aaa7bd5fb665c6864b5f963dd9097905c54125909c7aa94c9e18507cdbe6c53"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-utils"
+version = "0.8.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0bf124c720b7686e3c2663cf54062ab0f68a88af2fb6a030e87e30bf721fcb38"
+dependencies = [
+ "cfg-if",
+ "lazy_static",
+]
+
+[[package]]
 name = "ctor"
 version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -140,12 +160,13 @@ dependencies = [
 
 [[package]]
 name = "dprint-core"
-version = "0.52.1"
+version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17f8e428fa749f5ecc645fbeaed21795b6adb5d34590c33c53642e8c22577b48"
+checksum = "3fd76b7077b6ae550f8b4b72ee619548e22c579679fa7b0362261297b9fbd42a"
 dependencies = [
  "anyhow",
  "bumpalo",
+ "crossbeam-channel",
  "indexmap",
  "libc",
  "parking_lot",
@@ -171,7 +192,7 @@ dependencies = [
 
 [[package]]
 name = "dprint-plugin-exec"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "dprint-core",

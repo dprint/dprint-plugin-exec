@@ -6,7 +6,7 @@ use dprint_core::configuration::ConfigurationDiagnostic;
 use dprint_core::configuration::GlobalConfiguration;
 use dprint_core::configuration::NewLineKind;
 use dprint_core::configuration::ResolveConfigurationResult;
-use dprint_core::configuration::DEFAULT_GLOBAL_CONFIGURATION;
+use dprint_core::configuration::RECOMMENDED_GLOBAL_CONFIGURATION;
 use globset::GlobMatcher;
 use handlebars::Handlebars;
 use serde::Serialize;
@@ -85,7 +85,7 @@ impl Configuration {
         "lineWidth",
         global_config
           .line_width
-          .unwrap_or(DEFAULT_GLOBAL_CONFIGURATION.line_width),
+          .unwrap_or(RECOMMENDED_GLOBAL_CONFIGURATION.line_width),
         &mut diagnostics,
       ),
       use_tabs: get_value(
@@ -93,7 +93,7 @@ impl Configuration {
         "useTabs",
         global_config
           .use_tabs
-          .unwrap_or(DEFAULT_GLOBAL_CONFIGURATION.use_tabs),
+          .unwrap_or(RECOMMENDED_GLOBAL_CONFIGURATION.use_tabs),
         &mut diagnostics,
       ),
       indent_width: get_value(
@@ -101,7 +101,7 @@ impl Configuration {
         "indentWidth",
         global_config
           .indent_width
-          .unwrap_or(DEFAULT_GLOBAL_CONFIGURATION.indent_width),
+          .unwrap_or(RECOMMENDED_GLOBAL_CONFIGURATION.indent_width),
         &mut diagnostics,
       ),
       new_line_kind: get_value(
@@ -109,7 +109,7 @@ impl Configuration {
         "newLineKind",
         global_config
           .new_line_kind
-          .unwrap_or(DEFAULT_GLOBAL_CONFIGURATION.new_line_kind),
+          .unwrap_or(RECOMMENDED_GLOBAL_CONFIGURATION.new_line_kind),
         &mut diagnostics,
       ),
       commands: Vec::new(),

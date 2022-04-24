@@ -1,6 +1,6 @@
 [package]
 name = "dprint-plugin-exec"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Alex Zherebtsov <zherebtsovalex@gmail.com>", "David Sherret <dsherret@gmail.com>"]
 edition = "2021"
 homepage = "https://github.com/dprint/dprint-plugin-exec"
@@ -19,7 +19,7 @@ panic = "abort"
 
 [dependencies]
 anyhow = "1.0.51"
-dprint-core = { version = "0.53.0", features = ["process"] }
+dprint-core = { version = "0.56.0", features = ["process"] }
 globset = "0.4.8"
 handlebars = "4.1.6"
 serde = { version = "1.0.118", features = ["derive"] }

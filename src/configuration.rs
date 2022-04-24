@@ -263,7 +263,7 @@ mod tests {
     ]);
     let config = Configuration::resolve(unresolved_config, &Default::default()).config;
     assert_eq!(config.line_width, 120);
-    assert_eq!(config.indent_width, 4);
+    assert_eq!(config.indent_width, 2);
     assert_eq!(config.new_line_kind, NewLineKind::LineFeed);
     assert!(!config.use_tabs);
     assert_eq!(config.cache_key, "2");

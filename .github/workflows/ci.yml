@@ -52,6 +52,7 @@ jobs:
       - name: Build release (Linux aarch64)
         if: startsWith(matrix.config.os, 'ubuntu') && matrix.config.kind == 'test_release'
         run: |
+          sudo apt install -y gcc-aarch64-linux-gnu
           rustup target add aarch64-unknown-linux-gnu
           export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
           export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc

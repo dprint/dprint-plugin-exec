@@ -146,8 +146,7 @@ pub async fn format_text(
         .ok_or_else(|| anyhow!("Cannot open formatter stdin"))?
         .write_all(file_text.as_bytes())
         .await
-        .map_err(|err| anyhow!("Cannot write into formatter stdin. {}", err))
-        .unwrap();
+        .map_err(|err| anyhow!("Cannot write into formatter stdin. {}", err))?;
     }
 
     // Ensure the child process is spawned in the runtime so it can

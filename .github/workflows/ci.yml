@@ -26,6 +26,7 @@ jobs:
 
     outputs:
       LINUX_X86_64_ZIP_CHECKSUM: ${{steps.linux_x86_64_pre_release.outputs.ZIP_CHECKSUM}}
+      LINUX_AARCH64_ZIP_CHECKSUM: ${{steps.linux_aarch64_pre_release.outputs.ZIP_CHECKSUM}}
       MAC_X86_64_ZIP_CHECKSUM: ${{steps.mac_x86_64_pre_release.outputs.ZIP_CHECKSUM}}
       MAC_AARCH64_ZIP_CHECKSUM: ${{steps.mac_aarch64_pre_release.outputs.ZIP_CHECKSUM}}
       WINDOWS_X86_64_ZIP_CHECKSUM: ${{steps.windows_x86_64_pre_release.outputs.ZIP_CHECKSUM}}
@@ -48,6 +49,13 @@ jobs:
       - name: Build release
         if: matrix.config.kind == 'test_release'
         run: cargo build --release --all-targets --locked --verbose
+      - name: Build release (Linux aarch64)
+        if: startsWith(matrix.config.os, 'ubuntu') && matrix.config.kind == 'test_release'
+        run: |
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          cargo build --locked --all-features --release --target aarch64-unknown-linux-gnu
       - name: Build release (Mac aarch64)
         if: startsWith(matrix.config.os, 'macOS') && matrix.config.kind == 'test_release'
         run: |
@@ -71,6 +79,14 @@ jobs:
           cd target/release
           zip -r dprint-plugin-exec-x86_64-unknown-linux-gnu.zip dprint-plugin-exec
           echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-x86_64-unknown-linux-gnu.zip | awk '{print $1}')"
+      - name: Pre-release (Linux aarch64)
+        id: linux_aarch64_pre_release
+        if: startsWith(matrix.config.os, 'ubuntu') && matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd target/aarch64-unknown-linux-gnu/release
+          zip -r dprint-plugin-exec-aarch64-unknown-linux-gnu.zip dprint-plugin-exec
+          echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-aarch64-unknown-linux-gnu.zip | awk '{print $1}')"
+          mv dprint-plugin-exec-aarch64-unknown-linux-gnu.zip ../../release
       - name: Pre-release (Mac)
         id: mac_x86_64_pre_release
         if: startsWith(matrix.config.os, 'macOS') && matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
@@ -100,7 +116,9 @@ jobs:
         if: startsWith(matrix.config.os, 'ubuntu') && matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
         with:
           name: linux-artifacts
-          path: target/release/dprint-plugin-exec-x86_64-unknown-linux-gnu.zip
+          path: |
+            target/release/dprint-plugin-exec-x86_64-unknown-linux-gnu.zip
+            target/release/dprint-plugin-exec-aarch64-unknown-linux-gnu.zip
       - name: Upload Artifacts (Mac)
         uses: actions/upload-artifact@v2
         if: startsWith(matrix.config.os, 'macOS') && matrix.config.kind == 'test_release' && startsWith(github.ref, 'refs/tags/')
@@ -134,6 +152,7 @@ jobs:
       - name: Move downloaded artifacts
         run: |
           mv linux-artifacts/dprint-plugin-exec-x86_64-unknown-linux-gnu.zip .
+          mv linux-artifacts/dprint-plugin-exec-aarch64-unknown-linux-gnu.zip .
           mv mac-artifacts/dprint-plugin-exec-x86_64-apple-darwin.zip .
           mv mac-artifacts/dprint-plugin-exec-aarch64-apple-darwin.zip .
           mv windows-artifacts/dprint-plugin-exec-x86_64-pc-windows-msvc.zip .
@@ -141,6 +160,7 @@ jobs:
       - name: Output checksums
         run: |
           echo "Linux x86_64 zip: ${{needs.build.outputs.LINUX_X86_64_ZIP_CHECKSUM}}"
+          echo "Linux aarch64 zip: ${{needs.build.outputs.LINUX_AARCH64_ZIP_CHECKSUM}}"
           echo "Mac x86_64 zip: ${{needs.build.outputs.MAC_X86_64_ZIP_CHECKSUM}}"
           echo "Mac aarch64 zip: ${{needs.build.outputs.MAC_AARCH64_ZIP_CHECKSUM}}"
           echo "Windows x86_64 zip: ${{needs.build.outputs.WINDOWS_X86_64_ZIP_CHECKSUM}}"
@@ -169,6 +189,7 @@ jobs:
             dprint-plugin-exec-x86_64-apple-darwin.zip
             dprint-plugin-exec-aarch64-apple-darwin.zip
             dprint-plugin-exec-x86_64-unknown-linux-gnu.zip
+            dprint-plugin-exec-aarch64-unknown-linux-gnu.zip
             dprint-plugin-exec-x86_64-pc-windows-msvc.zip
             plugin.json
             deployment/schema.json

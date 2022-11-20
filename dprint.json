@@ -4,7 +4,7 @@
   "lineWidth": 100,
   "exec": {
     "associations": "**/*.rs",
-    "rustfmt": "rustfmt"
+    "rustfmt": "rustfmt --edition 2021"
   },
   "includes": [
     "**/*.{json,md,html,scss,css,toml,rs,xml}"

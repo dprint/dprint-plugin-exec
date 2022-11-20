@@ -217,13 +217,13 @@ async fn handle_child_exit_status(
   if exit_status.success() {
     return Ok(ok_text);
   }
-  return Err(anyhow!(
+  Err(anyhow!(
     "Child process exited with code {}: {}",
     exit_status.code().unwrap(),
     err_rx
       .await
       .expect("Could not propagate error message from child process")
-  ));
+  ))
 }
 
 fn timeout_err(config: &Configuration) -> Error {

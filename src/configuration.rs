@@ -2,6 +2,7 @@ use dprint_core::configuration::get_nullable_value;
 use dprint_core::configuration::get_unknown_property_diagnostics;
 use dprint_core::configuration::get_value;
 use dprint_core::configuration::ConfigKeyMap;
+use dprint_core::configuration::ConfigKeyValue;
 use dprint_core::configuration::ConfigurationDiagnostic;
 use dprint_core::configuration::GlobalConfiguration;
 use dprint_core::configuration::NewLineKind;
@@ -145,9 +146,39 @@ impl Configuration {
         args: command,
         associations: {
           let associations_key = format!("{}.associations", command_key);
-          let value: Option<String> =
-            get_nullable_value(&mut config, &associations_key, &mut diagnostics);
-          match value {
+          let maybe_value = config.remove(&associations_key).and_then(|value| match value {
+            ConfigKeyValue::String(value) => Some(value),
+            ConfigKeyValue::Array(mut value) => match value.len() {
+              0 => None,
+              1 => match value.remove(0) {
+                ConfigKeyValue::String(value) => Some(value),
+                _ => {
+                  diagnostics.push(ConfigurationDiagnostic {
+                    property_name: associations_key.clone(),
+                    message: "Expected string value in array.".to_string(),
+                  });
+                  None
+                }
+              },
+              _ => {
+                diagnostics.push(ConfigurationDiagnostic {
+                  property_name: associations_key.clone(),
+                  message: "Unfortunately multiple globs haven't been implemented yet. Please provide a single glob or consider contributing this feature."
+                    .to_string(),
+                });
+                None
+              }
+            },
+            _ => {
+              diagnostics.push(ConfigurationDiagnostic {
+                property_name: associations_key.clone(),
+                message: "Expected string or array value.".to_string(),
+              });
+              None
+            }
+          });
+
+          match maybe_value {
             Some(value) => {
               let mut builder = globset::GlobBuilder::new(&value);
               builder.case_insensitive(cfg!(windows));
@@ -163,11 +194,7 @@ impl Configuration {
               }
             }
             None => {
-              if resolved_config
-                .commands
-                .iter()
-                .any(|b| b.associations.is_none())
-              {
+              if resolved_config.commands.iter().any(|b| b.associations.is_none()) {
                 diagnostics.push(ConfigurationDiagnostic {
                   property_name: associations_key.to_string(),
                   message: format!(
@@ -184,17 +211,8 @@ impl Configuration {
             }
           }
         },
-        cwd: get_cwd(get_nullable_value(
-          &mut config,
-          &format!("{}.cwd", command_key),
-          &mut diagnostics,
-        )),
-        stdin: get_value(
-          &mut config,
-          &format!("{}.stdin", command_key),
-          true,
-          &mut diagnostics,
-        ),
+        cwd: get_cwd(get_nullable_value(&mut config, &format!("{}.cwd", command_key), &mut diagnostics)),
+        stdin: get_value(&mut config, &format!("{}.stdin", command_key), true, &mut diagnostics),
       });
     }
 
@@ -298,7 +316,8 @@ mod tests {
             "A \"command2.associations\" configuration key must be provided because another formatting ",
             "command is specified without an associations key. (Example: `\"command2.associations\": \"**/*.rs\"` ",
             "would format .rs files with this command)"
-          ).to_string(),
+          )
+          .to_string(),
         },
         ConfigurationDiagnostic {
           property_name: "command3.associations".to_string(),
@@ -306,10 +325,82 @@ mod tests {
             "A \"command3.associations\" configuration key must be provided because another formatting ",
             "command is specified without an associations key. (Example: `\"command3.associations\": \"**/*.rs\"` ",
             "would format .rs files with this command)"
-          ).to_string(),
+          )
+          .to_string(),
         },
       ],
     )
+  }
+
+  #[test]
+  fn handle_associations_value() {
+    let unresolved_config = ConfigKeyMap::from([
+      (
+        "command.associations".to_string(),
+        ConfigKeyValue::Array(vec![ConfigKeyValue::from_str("**/*.rs")]),
+      ),
+      ("command".to_string(), ConfigKeyValue::from_str("command")),
+    ]);
+    let mut config = Configuration::resolve(unresolved_config, &Default::default()).config;
+    assert!(config.commands.remove(0).associations.is_some());
+
+    let unresolved_config = ConfigKeyMap::from([
+      (
+        "command.associations".to_string(),
+        ConfigKeyValue::Array(vec![]),
+      ),
+      ("command".to_string(), ConfigKeyValue::from_str("command")),
+    ]);
+    let mut config = Configuration::resolve(unresolved_config, &Default::default()).config;
+    assert!(config.commands.remove(0).associations.is_none());
+
+    let unresolved_config = ConfigKeyMap::from([
+      (
+        "command.associations".to_string(),
+        ConfigKeyValue::Array(vec![
+          ConfigKeyValue::from_str("**/*.rs"),
+          ConfigKeyValue::from_str("**/*.json"),
+        ]),
+      ),
+      ("command".to_string(), ConfigKeyValue::from_str("command")),
+    ]);
+    run_diagnostics_test(
+      unresolved_config,
+      vec![ConfigurationDiagnostic {
+        property_name: "command.associations".to_string(),
+        message: "Unfortunately multiple globs haven't been implemented yet. Please provide a single glob or consider contributing this feature.".to_string(),
+      }],
+    );
+
+    let unresolved_config = ConfigKeyMap::from([
+      (
+        "command.associations".to_string(),
+        ConfigKeyValue::Array(vec![ConfigKeyValue::from_bool(true)]),
+      ),
+      ("command".to_string(), ConfigKeyValue::from_str("command")),
+    ]);
+    run_diagnostics_test(
+      unresolved_config,
+      vec![ConfigurationDiagnostic {
+        property_name: "command.associations".to_string(),
+        message: "Expected string value in array.".to_string(),
+      }],
+    );
+
+    let unresolved_config = ConfigKeyMap::from([
+      (
+        "command.associations".to_string(),
+        ConfigKeyValue::from_bool(true),
+      ),
+      ("command".to_string(), ConfigKeyValue::from_str("command")),
+    ]);
+    run_diagnostics_test(
+      unresolved_config,
+      vec![ConfigurationDiagnostic {
+        property_name: "command.associations".to_string(),
+        message: "Expected string or array value.".to_string(),
+      }],
+    );
   }
 
   fn run_diagnostics_test(

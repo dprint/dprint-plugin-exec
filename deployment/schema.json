@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://plugins.dprint.dev/dprint/dprint-plugin-exec/0.0.0/schema.json",
   "type": "object",
+  "required": ["associations"],
   "properties": {
     "locked": {
       "description": "Whether the configuration is not allowed to be overriden or extended.",
@@ -47,6 +48,19 @@
         "description": "Uses the system standard (ex. crlf on Windows)."
       }]
     },
+    "associations": {
+      "description": "Glob pattern that associates this plugin with certain file paths (ex. \"**/*.{rs,java,py}\").",
+      "anyOf": [{
+        "description": "Glob pattern that associates this plugin with certain file paths (ex. \"**/*.{rs,java,py}\").",
+        "type": "string"
+      }, {
+        "description": "Glob patterns that associates this plugin with certain file paths.",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }]
+    },
     "cacheKey": {
       "description": "Optional value used to bust dprint's incremental cache (ex. provide \"1\"). This is useful if you want to force formatting to occur because the underlying command has changed.",
       "type": "string"
@@ -59,8 +73,17 @@
   },
   "patternProperties": {
     "^.*\\.associations$": {
-      "type": "string",
-      "description": "The pattern to use to match a file path. Ex. \"rustfmt.associations\": \"**/*.rs\""
+      "description": "Glob pattern that associates certain file paths with this command (ex. \"rustfmt.associations\": \"**/*.rs\").",
+      "anyOf": [{
+        "description": "Glob pattern that associates certain file paths with this command (ex. \"rustfmt.associations\": \"**/*.rs\").",
+        "type": "string"
+      }, {
+        "description": "Glob patterns that associates certain file paths with this command.",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }]
     },
     "^.*\\.cwd$": {
       "type": "string",

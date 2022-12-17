@@ -220,9 +220,9 @@ jobs:
 
             - Install dprint's CLI >= 0.24.0
 
-            In dprint configuration file:
+            In a dprint configuration file:
 
-            1. Specify the plugin url and checksum in the `"plugins"` array:
+            1. Specify the plugin url and checksum in the `"plugins"` array or run `dprint config add exec`:
 
                ```jsonc
                {

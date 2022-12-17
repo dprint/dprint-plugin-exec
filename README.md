@@ -46,6 +46,9 @@ The configuration for dprint-plugin-exec is more complicated than most dprint pl
   },
   "includes": [
     "**/*.{rs,java,py}"
+  ],
+  "plugins": [
+    // run `dprint config add exec` to add the latest exec plugin's url here
   ]
 }
 ```
@@ -85,6 +88,9 @@ Command templates (ex. see the prettier example above):
   },
   "includes": [
     "**/*.{py}"
+  ],
+  "plugins": [
+    // run `dprint config add exec` to add the latest exec plugin's url here
   ]
 }
 ```
@@ -102,11 +108,16 @@ Command templates (ex. see the prettier example above):
   },
   "includes": [
     "**/*.{java}"
+  ],
+  "plugins": [
+    // run `dprint config add exec` to add the latest exec plugin's url here
   ]
 }
 ```
 
 ### Example - rustfmt
+
+Use the `rustfmt` binary so you can format stdin.
 
 ```jsonc
 {
@@ -114,11 +125,14 @@ Command templates (ex. see the prettier example above):
   "exec": {
     "associations": "**/*.{rs}",
 
-    "rustfmt": "rustfmt",
+    "rustfmt": "rustfmt --edition 2021",
     "rustfmt.associations": "**/*.rs"
   },
   "includes": [
     "**/*.{rs}"
+  ],
+  "plugins": [
+    // run `dprint config add exec` to add the latest exec plugin's url here
   ]
 }
 ```
@@ -139,6 +153,9 @@ Consider using [dprint-plugin-prettier](https://dprint.dev/plugins/prettier/) in
   "includes": [
     // add more extensions that prettier should format
     "**/*.{js,ts,html}"
+  ],
+  "plugins": [
+    // run `dprint config add exec` to add the latest exec plugin's url here
   ]
 }
 ```

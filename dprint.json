@@ -18,6 +18,6 @@
     "https://plugins.dprint.dev/json-0.14.1.wasm",
     "https://plugins.dprint.dev/markdown-0.12.2.wasm",
     "https://plugins.dprint.dev/toml-0.5.4.wasm",
-    "https://plugins.dprint.dev/exec-0.3.1.json@9351b67ec7a6b58a69201c2834cba38cb3d191080aefc6422fb1320f03c8fc4d"
+    "https://plugins.dprint.dev/exec-0.3.2.json@8efbbb3fcfbdf84142c3c438fbdeaf1637152a020032127c837b2b14e23261c3"
   ]
 }

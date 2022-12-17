@@ -108,8 +108,6 @@ Command templates (ex. see the prettier example above):
 
 ### Example - rustfmt
 
-You may also consider [dprint-plugin-rustfmt](https://dprint.dev/plugins/rustfmt/), which will be pinned to a specific version and be slightly faster.
-
 ```jsonc
 {
   // ...etc...

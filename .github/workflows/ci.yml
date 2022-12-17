@@ -50,9 +50,10 @@ jobs:
       - name: Build release
         if: matrix.config.kind == 'test_release'
         run: cargo build --release --all-targets --locked --verbose
-      - name: Build release(musl)
+      - name: Build release (Linux-musl)
         if: startsWith(matrix.config.os, 'ubuntu') && matrix.config.kind == 'test_release'
         run: |
+          sudo apt update
           sudo apt install musl musl-dev musl-tools
           rustup target add x86_64-unknown-linux-musl
           cargo build --locked --all-features --release --target x86_64-unknown-linux-musl

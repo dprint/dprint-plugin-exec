@@ -94,41 +94,41 @@ jobs:
         if: 'matrix.config.target == ''x86_64-apple-darwin'' && startsWith(github.ref, ''refs/tags/'')'
         run: |-
           cd target/x86_64-apple-darwin/release
-          zip -r dprint-plugin-exec-x86_64-apple-darwin.zip dprint
+          zip -r dprint-plugin-exec-x86_64-apple-darwin.zip dprint-plugin-exec
           echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-x86_64-apple-darwin.zip | awk '{print $1}')"
       - name: Pre-release (aarch64-apple-darwin)
         id: pre_release_aarch64_apple_darwin
         if: 'matrix.config.target == ''aarch64-apple-darwin'' && startsWith(github.ref, ''refs/tags/'')'
         run: |-
           cd target/aarch64-apple-darwin/release
-          zip -r dprint-plugin-exec-aarch64-apple-darwin.zip dprint
+          zip -r dprint-plugin-exec-aarch64-apple-darwin.zip dprint-plugin-exec
           echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-aarch64-apple-darwin.zip | awk '{print $1}')"
       - name: Pre-release (x86_64-pc-windows-msvc)
         id: pre_release_x86_64_pc_windows_msvc
         if: 'matrix.config.target == ''x86_64-pc-windows-msvc'' && startsWith(github.ref, ''refs/tags/'')'
         run: |-
-          Compress-Archive -CompressionLevel Optimal -Force -Path target/x86_64-pc-windows-msvc/release/dprint.exe -DestinationPath target/x86_64-pc-windows-msvc/release/dprint-plugin-exec-x86_64-pc-windows-msvc.zip
+          Compress-Archive -CompressionLevel Optimal -Force -Path target/x86_64-pc-windows-msvc/release/dprint-plugin-exec.exe -DestinationPath target/x86_64-pc-windows-msvc/release/dprint-plugin-exec-x86_64-pc-windows-msvc.zip
           echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 target/x86_64-pc-windows-msvc/release/dprint-plugin-exec-x86_64-pc-windows-msvc.zip | awk '{print $1}')"
       - name: Pre-release (x86_64-unknown-linux-gnu)
         id: pre_release_x86_64_unknown_linux_gnu
         if: 'matrix.config.target == ''x86_64-unknown-linux-gnu'' && startsWith(github.ref, ''refs/tags/'')'
         run: |-
           cd target/x86_64-unknown-linux-gnu/release
-          zip -r dprint-plugin-exec-x86_64-unknown-linux-gnu.zip dprint
+          zip -r dprint-plugin-exec-x86_64-unknown-linux-gnu.zip dprint-plugin-exec
           echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-x86_64-unknown-linux-gnu.zip | awk '{print $1}')"
       - name: Pre-release (x86_64-unknown-linux-musl)
         id: pre_release_x86_64_unknown_linux_musl
         if: 'matrix.config.target == ''x86_64-unknown-linux-musl'' && startsWith(github.ref, ''refs/tags/'')'
         run: |-
           cd target/x86_64-unknown-linux-musl/release
-          zip -r dprint-plugin-exec-x86_64-unknown-linux-musl.zip dprint
+          zip -r dprint-plugin-exec-x86_64-unknown-linux-musl.zip dprint-plugin-exec
           echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-x86_64-unknown-linux-musl.zip | awk '{print $1}')"
       - name: Pre-release (aarch64-unknown-linux-gnu)
         id: pre_release_aarch64_unknown_linux_gnu
         if: 'matrix.config.target == ''aarch64-unknown-linux-gnu'' && startsWith(github.ref, ''refs/tags/'')'
         run: |-
           cd target/aarch64-unknown-linux-gnu/release
-          zip -r dprint-plugin-exec-aarch64-unknown-linux-gnu.zip dprint
+          zip -r dprint-plugin-exec-aarch64-unknown-linux-gnu.zip dprint-plugin-exec
           echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-aarch64-unknown-linux-gnu.zip | awk '{print $1}')"
       - name: Upload artifacts (x86_64-apple-darwin)
         if: 'matrix.config.target == ''x86_64-apple-darwin'' && startsWith(github.ref, ''refs/tags/'')'

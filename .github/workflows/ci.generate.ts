@@ -159,18 +159,18 @@ const ci = {
               case OperatingSystem.Mac:
                 return [
                   `cd target/${profile.target}/release`,
-                  `zip -r ${profile.zipFileName} dprint`,
+                  `zip -r ${profile.zipFileName} dprint-plugin-exec`,
                   `echo \"::set-output name=ZIP_CHECKSUM::$(shasum -a 256 ${profile.zipFileName} | awk '{print $1}')\"`,
                 ];
               case OperatingSystem.Linux:
                 return [
                   `cd target/${profile.target}/release`,
-                  `zip -r ${profile.zipFileName} dprint`,
+                  `zip -r ${profile.zipFileName} dprint-plugin-exec`,
                   `echo \"::set-output name=ZIP_CHECKSUM::$(shasum -a 256 ${profile.zipFileName} | awk '{print $1}')\"`,
                 ];
               case OperatingSystem.Windows:
                 return [
-                  `Compress-Archive -CompressionLevel Optimal -Force -Path target/${profile.target}/release/dprint.exe -DestinationPath target/${profile.target}/release/${profile.zipFileName}`,
+                  `Compress-Archive -CompressionLevel Optimal -Force -Path target/${profile.target}/release/dprint-plugin-exec.exe -DestinationPath target/${profile.target}/release/${profile.zipFileName}`,
                   `echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 target/${profile.target}/release/${profile.zipFileName} | awk '{print $1}')"`,
                 ];
             }

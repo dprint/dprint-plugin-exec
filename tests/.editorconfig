@@ -1,4 +1,0 @@
-root = true
-
-[specs/**.txt]
-trim_trailing_whitespace = false

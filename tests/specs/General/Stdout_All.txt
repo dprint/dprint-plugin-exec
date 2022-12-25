@@ -1,58 +1,56 @@
-~~ lineWidth: 30, fold: fold -w 30 -s ~~
+~~ lineWidth: 30, fold: deno run -A ./tests/fold.ts -w 30 ~~
 == Process returns the formatted text via stdout ==
 this should be wrapped because it is a long text
 
 [expect]
-this should be wrapped 
-because it is a long text
+this should be wrapped because
+it is a long text
 
 == Long text ==
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 
 [expect]
-Lorem ipsum dolor sit amet, 
-consectetur adipiscing elit, 
-sed do eiusmod tempor 
-incididunt ut labore et 
-dolore magna aliqua. Ut enim 
-ad minim veniam, quis nostrud 
-exercitation ullamco laboris 
-nisi ut aliquip ex ea commodo 
-consequat. Duis aute irure 
-dolor in reprehenderit in 
-voluptate velit esse cillum 
-dolore eu fugiat nulla 
-pariatur. Excepteur sint 
-occaecat cupidatat non 
-proident, sunt in culpa qui 
-officia deserunt mollit anim 
-id est laborum.
+Lorem ipsum dolor sit amet,
+consectetur adipiscing elit,
+sed do eiusmod tempor
+incididunt ut labore et dolore
+magna aliqua. Ut enim ad minim
+veniam, quis nostrud
+exercitation ullamco laboris
+nisi ut aliquip ex ea commodo
+consequat. Duis aute irure
+dolor in reprehenderit in
+voluptate velit esse cillum
+dolore eu fugiat nulla
+pariatur. Excepteur sint
+occaecat cupidatat non
+proident, sunt in culpa qui
+officia deserunt mollit anim id
+est laborum.
 
 == Newlines in long text preserved ==
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore
 et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
  ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit
-  in voluptate velit esse cillum dolore eu 
-fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia 
+  in voluptate velit esse cillum dolore eu
+fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia
 deserunt mollit anim id est laborum.
 
 [expect]
-Lorem ipsum dolor sit amet, 
-consectetur adipiscing elit, 
-sed do eiusmod tempor 
-incididunt ut labore 
-et dolore magna aliqua. Ut 
-enim ad minim veniam, quis 
-nostrud exercitation
- ullamco laboris nisi ut 
-aliquip ex ea commodo 
-consequat. Duis aute irure 
-dolor in reprehenderit
-  in voluptate velit esse 
-cillum dolore eu 
-fugiat nulla pariatur. 
-Excepteur sint occaecat 
-cupidatat non proident, sunt 
-in culpa qui officia 
-deserunt mollit anim id est 
-laborum.
+Lorem ipsum dolor sit amet,
+consectetur adipiscing elit,
+sed do eiusmod tempor
+incididunt ut labore et dolore
+magna aliqua. Ut enim ad minim
+veniam, quis nostrud
+exercitation ullamco laboris
+nisi ut aliquip ex ea commodo
+consequat. Duis aute irure
+dolor in reprehenderit in
+voluptate velit esse cillum
+dolore eu fugiat nulla
+pariatur. Excepteur sint
+occaecat cupidatat non
+proident, sunt in culpa qui
+officia deserunt mollit anim id
+est laborum.

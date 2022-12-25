@@ -2,7 +2,6 @@ extern crate dprint_development;
 extern crate dprint_plugin_exec;
 
 #[test]
-#[cfg(unix)]
 fn test_specs() {
   use std::path::Path;
   use std::path::PathBuf;

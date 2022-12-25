@@ -88,7 +88,7 @@ const ci = {
         {
           name: "Cache cargo",
           if: "startsWith(github.ref, 'refs/tags/') != true",
-          uses: "Swatinem/rust-cache@v1",
+          uses: "Swatinem/rust-cache@v2",
         },
         { uses: "denoland/setup-deno@v1" },
         {

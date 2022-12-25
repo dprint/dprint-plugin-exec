@@ -15,9 +15,13 @@ function paragraphsToSingleLines(text: string) {
   let finalText = "";
   let previousLine: string | undefined = undefined;
   for (const line of text.split(/\r?\n/g).map((l) => l.trim())) {
+    const previousLineEmpty = previousLine == null || previousLine.length === 0;
     if (line.length === 0) {
-      finalText += "\n\n";
-    } else if (previousLine == null || previousLine.length === 0) {
+      finalText += "\n";
+      if (!previousLineEmpty) {
+        finalText += "\n";
+      }
+    } else if (previousLineEmpty) {
       finalText += line;
     } else {
       finalText += " " + line;

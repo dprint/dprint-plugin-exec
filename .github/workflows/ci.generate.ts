@@ -34,12 +34,14 @@ const profileDataItems: ProfileData[] = [{
   os: OperatingSystem.Linux,
   target: "aarch64-unknown-linux-gnu",
 }];
-const profiles = profileDataItems.map(profile => {
+const profiles = profileDataItems.map((profile) => {
   return {
     ...profile,
     artifactsName: `${profile.target}-artifacts`,
     zipFileName: `dprint-plugin-exec-${profile.target}.zip`,
-    zipChecksumEnvVarName: `ZIP_CHECKSUM_${profile.target.toUpperCase().replaceAll("-", "_")}`,
+    zipChecksumEnvVarName: `ZIP_CHECKSUM_${
+      profile.target.toUpperCase().replaceAll("-", "_")
+    }`,
   };
 });
 
@@ -51,7 +53,8 @@ const ci = {
   },
   concurrency: {
     // https://stackoverflow.com/a/72408109/188246
-    group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}",
+    group:
+      "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}",
     "cancel-in-progress": true,
   },
   jobs: {
@@ -60,7 +63,7 @@ const ci = {
       "runs-on": "${{ matrix.config.os }}",
       strategy: {
         matrix: {
-          config: profiles.map(profile => ({
+          config: profiles.map((profile) => ({
             os: profile.os,
             run_tests: (profile.runTests ?? false).toString(),
             target: profile.target,
@@ -68,13 +71,17 @@ const ci = {
         },
       },
       outputs: Object.fromEntries(
-        profiles.map(profile => ([
+        profiles.map((profile) => [
           profile.zipChecksumEnvVarName,
-          "${{steps.pre_release_" + profile.target.replaceAll("-", "_") + ".outputs.ZIP_CHECKSUM}}"])),
+          "${{steps.pre_release_" + profile.target.replaceAll("-", "_") +
+          ".outputs.ZIP_CHECKSUM}}",
+        ]),
       ),
       env: {
         // disabled to reduce ./target size and generally it's slower enabled
-        CARGO_INCREMENTAL: 0, RUST_BACKTRACE: "full" },
+        CARGO_INCREMENTAL: 0,
+        RUST_BACKTRACE: "full",
+      },
       steps: [
         { uses: "actions/checkout@v2" },
         { uses: "dtolnay/rust-toolchain@stable" },
@@ -111,17 +118,21 @@ const ci = {
           name: "Build (Debug)",
           if: "!startsWith(github.ref, 'refs/tags/')",
           env: {
-            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc",
+            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER":
+              "aarch64-linux-gnu-gcc",
           },
-          run: "cargo build --locked --all-targets --target ${{matrix.config.target}}",
+          run:
+            "cargo build --locked --all-targets --target ${{matrix.config.target}}",
         },
         {
           name: "Build release",
           if: "startsWith(github.ref, 'refs/tags/')",
           env: {
-            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc",
+            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER":
+              "aarch64-linux-gnu-gcc",
           },
-          run: "cargo build --locked --all-targets --target ${{matrix.config.target}} --release",
+          run:
+            "cargo build --locked --all-targets --target ${{matrix.config.target}} --release",
         },
         {
           name: "Lint",
@@ -131,16 +142,18 @@ const ci = {
         },
         {
           name: "Test (Debug)",
-          if: "matrix.config.run_tests == 'true' && !startsWith(github.ref, 'refs/tags/')",
+          if:
+            "matrix.config.run_tests == 'true' && !startsWith(github.ref, 'refs/tags/')",
           run: "cargo test --locked --all-features",
         },
         {
           name: "Test (Release)",
-          if: "matrix.config.run_tests == 'true' && startsWith(github.ref, 'refs/tags/')",
+          if:
+            "matrix.config.run_tests == 'true' && startsWith(github.ref, 'refs/tags/')",
           run: "cargo test --locked --all-features --release",
         },
         // zip files
-        ...profiles.map(profile => {
+        ...profiles.map((profile) => {
           function getRunSteps() {
             switch (profile.os) {
               case OperatingSystem.Mac:
@@ -165,15 +178,17 @@ const ci = {
           return {
             name: `Pre-release (${profile.target})`,
             id: `pre_release_${profile.target.replaceAll("-", "_")}`,
-            if: `matrix.config.target == '${profile.target}' && startsWith(github.ref, 'refs/tags/')`,
+            if:
+              `matrix.config.target == '${profile.target}' && startsWith(github.ref, 'refs/tags/')`,
             run: getRunSteps().join("\n"),
           };
         }),
         // upload artifacts
-        ...profiles.map(profile => {
+        ...profiles.map((profile) => {
           return {
             name: `Upload artifacts (${profile.target})`,
-            if: `matrix.config.target == '${profile.target}' && startsWith(github.ref, 'refs/tags/')`,
+            if:
+              `matrix.config.target == '${profile.target}' && startsWith(github.ref, 'refs/tags/')`,
             uses: "actions/upload-artifact@v2",
             with: {
               name: profile.artifactsName,
@@ -194,19 +209,20 @@ const ci = {
         { uses: "denoland/setup-deno@v1" },
         {
           name: "Move downloaded artifacts to root directory",
-          run: profiles.map(profile => {
-            return `mv ${profile.artifactsName}/${profile.zipFileName} .`
+          run: profiles.map((profile) => {
+            return `mv ${profile.artifactsName}/${profile.zipFileName} .`;
           }).join("\n"),
         },
         {
           name: "Output checksums",
-          run: profiles.map(profile => {
+          run: profiles.map((profile) => {
             return `echo "${profile.zipFileName}: \${{needs.build.outputs.${profile.zipChecksumEnvVarName}}}"`;
           }).join("\n"),
         },
         {
           name: "Create plugin file",
-          run: "deno run --allow-read=. --allow-write=. scripts/create_plugin_file.ts",
+          run:
+            "deno run --allow-read=. --allow-write=. scripts/create_plugin_file.ts",
         },
         {
           name: "Get tag version",
@@ -231,7 +247,7 @@ const ci = {
           env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" },
           with: {
             files: [
-              ...profiles.map(profile => profile.zipFileName),
+              ...profiles.map((profile) => profile.zipFileName),
               "plugin.json",
               "deployment/schema.json",
             ].join("\n"),

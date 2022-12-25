@@ -42,6 +42,7 @@ jobs:
       - name: Cache cargo
         if: startsWith(github.ref, 'refs/tags/') != true
         uses: Swatinem/rust-cache@v1
+      - uses: denoland/setup-deno@v1
 
       # Build
       - name: Build debug
@@ -163,8 +164,6 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v2
       - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
 
       - name: Move downloaded artifacts
         run: |

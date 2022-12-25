@@ -143,14 +143,19 @@ pub async fn format_text(
       child
         .stdin
         .take()
-        .ok_or_else(|| anyhow!("Cannot open formatter stdin"))?
+        .ok_or_else(|| {
+          anyhow!(
+            "Cannot open the command's stdin. Perhaps you meant to set the \"{}.stdin\" configuration to false?",
+            command.command_key
+          )
+        })?
         .write_all(file_text.as_bytes())
         .await
-        .map_err(|err| anyhow!("Cannot write into formatter stdin. {}", err))?;
+        .map_err(|err| anyhow!("Cannot write into the command's stdin. {}", err))?;
     }
 
     // Ensure the child process is spawned in the runtime so it can
-    // make progress on its own while we await for any output.
+    // make progress on its own while we wait for any output.
     let child_completed = tokio::spawn(async move {
       match child.wait().await {
         Ok(status) => Ok(status),
@@ -175,8 +180,18 @@ pub async fn format_text(
     }
   }
 
+  const MIN_CHARS_TO_EMPTY: usize = 100;
   Ok(if file_text == original_file_text {
     None
+  } else if original_file_text.trim().len() > MIN_CHARS_TO_EMPTY && file_text.trim().is_empty() {
+    // prevent someone formatting all their files to empty files
+    bail!(
+      concat!(
+        "The original file text was greater than {} characters, but the formatted text was empty. ",
+        "Perhaps dprint-plugin-exec has been misconfigured?",
+      ),
+      MIN_CHARS_TO_EMPTY
+    )
   } else {
     Some(file_text.to_string())
   })
@@ -281,4 +296,49 @@ fn maybe_substitute_variables(
     c_args.push(formatted);
   }
   c_args
+}
+
+#[cfg(test)]
+mod test {
+  use std::path::PathBuf;
+  use std::sync::Arc;
+
+  use dprint_core::configuration::ConfigKeyMap;
+  use dprint_core::configuration::ConfigKeyValue;
+  use dprint_core::plugins::NullCancellationToken;
+
+  use crate::configuration::Configuration;
+  use crate::format_text;
+
+  #[tokio::test]
+  async fn should_error_output_empty_file() {
+    let token = Arc::new(NullCancellationToken);
+    let unresolved_config = ConfigKeyMap::from([
+      (
+        "command.associations".to_string(),
+        ConfigKeyValue::Array(vec![ConfigKeyValue::from_str("**/*.txt")]),
+      ),
+      (
+        "command".to_string(),
+        ConfigKeyValue::from_str("deno eval 'Deno.exit(0)'"),
+      ),
+    ]);
+    let config = Configuration::resolve(unresolved_config, &Default::default()).config;
+    let result = format_text(
+      PathBuf::from("path.txt"),
+      "1".repeat(101),
+      Arc::new(config),
+      token,
+    )
+    .await;
+    let err_text = result.err().unwrap().to_string();
+    assert_eq!(
+      err_text,
+      concat!(
+        "The original file text was greater than 100 characters, ",
+        "but the formatted text was empty. ",
+        "Perhaps dprint-plugin-exec has been misconfigured?"
+      )
+    )
+  }
 }

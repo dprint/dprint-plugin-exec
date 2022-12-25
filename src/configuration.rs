@@ -32,6 +32,7 @@ pub struct Configuration {
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandConfiguration {
+  pub command_key: String,
   pub executable: String,
   pub cwd: PathBuf,
   /// Executable arguments to add
@@ -142,6 +143,7 @@ impl Configuration {
         continue;
       }
       resolved_config.commands.push(CommandConfiguration {
+        command_key: command_key.clone(),
         executable: command.remove(0),
         args: command,
         associations: {

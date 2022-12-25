@@ -18,14 +18,14 @@ overflow-checks = false
 panic = "abort"
 
 [dependencies]
-anyhow = "1.0.66"
-dprint-core = { version = "0.59.0", features = ["process"] }
+anyhow = "1.0.68"
+dprint-core = { version = "0.60.0", features = ["process"] }
 globset = "0.4.9"
-handlebars = "4.3.5"
+handlebars = "4.3.6"
 serde = { version = "1.0.147", features = ["derive"] }
 splitty = "1.0.1"
-tokio = { version = "1.22.0", features = ["full", "time"] }
+tokio = { version = "1.23.0", features = ["full", "time"] }
 
 [dev-dependencies]
 dprint-development = "0.9.2"
-pretty_assertions = "1.1.0"
+pretty_assertions = "1.3.0"

@@ -1,6 +1,6 @@
 [package]
 name = "dprint-plugin-exec"
-version = "0.3.3"
+version = "0.3.4"
 authors = ["Alex Zherebtsov <zherebtsovalex@gmail.com>", "David Sherret <dsherret@gmail.com>"]
 edition = "2021"
 homepage = "https://github.com/dprint/dprint-plugin-exec"

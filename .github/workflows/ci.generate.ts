@@ -33,6 +33,9 @@ const profileDataItems: ProfileData[] = [{
 }, {
   os: OperatingSystem.Linux,
   target: "aarch64-unknown-linux-gnu",
+}, {
+  os: OperatingSystem.Linux,
+  target: "aarch64-unknown-linux-musl",
 }];
 const profiles = profileDataItems.map((profile) => {
   return {
@@ -107,6 +110,15 @@ const ci = {
             "sudo apt update",
             "sudo apt install -y gcc-aarch64-linux-gnu",
             "rustup target add aarch64-unknown-linux-gnu",
+          ].join("\n"),
+        },
+        {
+          name: "Setup (Linux aarch64-musl)",
+          if: "matrix.config.target == 'aarch64-unknown-linux-musl'",
+          run: [
+            "sudo apt update",
+            "sudo apt install musl musl-dev musl-tools",
+            "rustup target add aarch64-unknown-linux-musl",
           ].join("\n"),
         },
         {

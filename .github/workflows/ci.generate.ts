@@ -87,7 +87,7 @@ const ci = {
       },
       steps: [
         { uses: "actions/checkout@v2" },
-        { uses: "dtolnay/rust-toolchain@stable" },
+        { uses: "dsherret/rust-toolchain-file@v1" },
         {
           name: "Cache cargo",
           if: "startsWith(github.ref, 'refs/tags/') != true",

@@ -13,7 +13,6 @@ This plugin executes CLI commands to format code via stdin (recommended) or via 
 
 The configuration for dprint-plugin-exec is more complicated than most dprint plugins due to its nature.
 
-1. Specify an includes pattern in dprint's config.
 1. Specify an [`"associations"`](https://dprint.dev/config/#associations) property in the plugin config in order to get the files that match that pattern to format with this exec plugin.
 1. Add general configuration if desired (shown below).
 1. Add binaries similar to what's shown below and specify what file patterns they match via a `<command-name>.associations` property.
@@ -44,9 +43,6 @@ The configuration for dprint-plugin-exec is more complicated than most dprint pl
     "yapf": "yapf",
     "yapf.associations": "**/*.py"
   },
-  "includes": [
-    "**/*.{rs,java,py}"
-  ],
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
   ]
@@ -86,9 +82,6 @@ Command templates (ex. see the prettier example above):
     "yapf": "yapf",
     "yapf.associations": "**/*.py"
   },
-  "includes": [
-    "**/*.{py}"
-  ],
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
   ]
@@ -106,9 +99,6 @@ Command templates (ex. see the prettier example above):
     "java": "java -jar formatter.jar {{file_path}}",
     "java.associations": "**/*.java"
   },
-  "includes": [
-    "**/*.{java}"
-  ],
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
   ]
@@ -128,9 +118,6 @@ Use the `rustfmt` binary so you can format stdin.
     "rustfmt": "rustfmt --edition 2021",
     "rustfmt.associations": "**/*.rs"
   },
-  "includes": [
-    "**/*.{rs}"
-  ],
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
   ]
@@ -150,10 +137,6 @@ Consider using [dprint-plugin-prettier](https://dprint.dev/plugins/prettier/) in
 
     "prettier": "prettier --stdin-filepath {{file_path}} --tab-width {{indent_width}} --print-width {{line_width}}"
   },
-  "includes": [
-    // add more extensions that prettier should format
-    "**/*.{js,ts,html}"
-  ],
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
   ]

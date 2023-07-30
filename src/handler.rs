@@ -81,7 +81,7 @@ impl AsyncPluginHandler for ExecHandler {
           .commands
           .iter()
           .flat_map(|c| c.file_extensions.iter())
-          .map(|s| s.to_string())
+          .map(|s| s.trim_start_matches('.').to_string())
           .collect(),
         file_names: config
           .commands

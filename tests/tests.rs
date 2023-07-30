@@ -32,8 +32,8 @@ fn test_specs() {
     },
     {
       move |file_name, file_text, spec_config| {
-        let config_result =
-          Configuration::resolve(parse_config_key_map(spec_config), &Default::default());
+        let map: ConfigKeyMap = serde_json::from_value(spec_config.clone().into()).unwrap();
+        let config_result = Configuration::resolve(map, &Default::default());
         ensure_no_diagnostics(&config_result.diagnostics);
 
         let mut file = file_name.to_path_buf();

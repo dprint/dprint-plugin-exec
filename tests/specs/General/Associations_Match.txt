@@ -1,5 +1,11 @@
 -- resources/test.txt --
-~~ lineWidth: 35, fold: deno run -A ./tests/fold.ts -w {{line_width}}, fold.associations: **/*.txt ~~
+~~ {
+  "lineWidth": 35,
+  "commands": [{
+    "associations": "**/*.txt",
+    "command": "deno run -A ./tests/fold.ts -w {{line_width}}"
+  }]
+} ~~
 == should format when the association matches ==
 Testing this out with some very very long text testing testing testing testing testing.
 

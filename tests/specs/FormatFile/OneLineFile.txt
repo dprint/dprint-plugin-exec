@@ -1,5 +1,12 @@
 -- resources/one-line.txt --
-~~ lineWidth: 30, fold: deno run -A ./tests/fold.ts -w {{line_width}} {{file_path}}, fold.stdin: false ~~
+~~ {
+  "lineWidth": 30,
+  "commands": [{
+    "command": "deno run -A ./tests/fold.ts -w {{line_width}} {{file_path}}",
+    "exts": ["txt"],
+    "stdin": false
+  }]
+} ~~
 == Long text ==
 // does not matter
 

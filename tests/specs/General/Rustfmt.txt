@@ -1,6 +1,12 @@
 -- file.rs --
-~~ rustfmt: rustfmt, rustfmt.associations: **/*.rs ~~
-== should do nothing when the association doesn't match ==
+~~ {
+  "lineWidth": 35,
+  "commands": [{
+    "command": "rustfmt",
+    "exts": ["rs"]
+  }]
+} ~~
+== should format with rustfmt ==
 struct   Test {    }
 
 [expect]

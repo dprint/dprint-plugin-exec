@@ -72,64 +72,67 @@
     },
     "commands": {
       "description": "Commands to format with.",
-      "type": "object",
-      "properties": {
-        "command": {
-          "description": "The commmand to execute to format with.",
-          "type": "string"
-        },
-        "exts": {
-          "description": "File extensions to use this command for.",
-          "anyOf": [{
-            "description": "File extension to use this command for.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "description": "The commmand to execute to format with.",
             "type": "string"
-          }, {
+          },
+          "exts": {
             "description": "File extensions to use this command for.",
-            "type": "array",
-            "items": [{
+            "anyOf": [{
+              "description": "File extension to use this command for.",
               "type": "string"
+            }, {
+              "description": "File extensions to use this command for.",
+              "type": "array",
+              "items": [{
+                "type": "string"
+              }]
             }]
-          }]
-        },
-        "fileNames": {
-          "description": "File names to format with this command. Useful for filenames without extensions",
-          "anyOf": [{
-            "description": "File name to format with this command. Useful for filenames without extensions.",
-            "type": "string"
-          }, {
+          },
+          "fileNames": {
             "description": "File names to format with this command. Useful for filenames without extensions",
-            "type": "array",
-            "items": [{
+            "anyOf": [{
+              "description": "File name to format with this command. Useful for filenames without extensions.",
               "type": "string"
+            }, {
+              "description": "File names to format with this command. Useful for filenames without extensions",
+              "type": "array",
+              "items": [{
+                "type": "string"
+              }]
             }]
-          }]
-        },
-        "stdin": {
-          "type": "boolean",
-          "description": "Whether to pass the file text in via stdin.",
-          "default": true
-        },
-        "cwd": {
-          "type": "string",
-          "description": "The current working directory to launch the executable with."
-        },
-        "associations": {
-          "description": "Glob pattern that associates certain file paths with this command. Prefer using 'exts' instead.",
-          "anyOf": [{
-            "description": "Glob pattern that associates certain file paths with this command.",
-            "type": "string"
-          }, {
-            "description": "Glob patterns that associates certain file paths with this command.",
-            "type": "array",
-            "items": {
+          },
+          "stdin": {
+            "type": "boolean",
+            "description": "Whether to pass the file text in via stdin.",
+            "default": true
+          },
+          "cwd": {
+            "type": "string",
+            "description": "The current working directory to launch the executable with."
+          },
+          "associations": {
+            "description": "Glob pattern that associates certain file paths with this command. Prefer using 'exts' instead.",
+            "anyOf": [{
+              "description": "Glob pattern that associates certain file paths with this command.",
               "type": "string"
-            }
-          }]
-        }
-      },
-      "required": [
-        "command"
-      ]
+            }, {
+              "description": "Glob patterns that associates certain file paths with this command.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }]
+          }
+        },
+        "required": [
+          "command"
+        ]
+      }
     }
   }
 }

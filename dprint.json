@@ -3,8 +3,10 @@
   "indentWidth": 2,
   "lineWidth": 100,
   "exec": {
-    "associations": "**/*.rs",
-    "rustfmt": "rustfmt --edition 2021"
+    "commands": [{
+      "command": "rustfmt --edition 2021 --config imports_granularity=item",
+      "exts": ["rs"]
+    }]
   },
   "excludes": [
     "**/dist",
@@ -15,6 +17,6 @@
     "https://plugins.dprint.dev/json-0.17.4.wasm",
     "https://plugins.dprint.dev/markdown-0.15.3.wasm",
     "https://plugins.dprint.dev/toml-0.5.4.wasm",
-    "https://plugins.dprint.dev/exec-0.3.5.json@d687dda57be0fe9a0088ccdaefa5147649ff24127d8b3ea227536c68ee7abeab"
+    "https://plugins.dprint.dev/exec-0.4.1.json@a892b9d01709275cf30254a9455635714ae6313b6b8212fb1b3f28f7cb06989d"
   ]
 }

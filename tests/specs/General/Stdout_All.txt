@@ -1,4 +1,10 @@
-~~ lineWidth: 30, fold: deno run -A ./tests/fold.ts -w 30 ~~
+~~ {
+  "lineWidth": 30,
+  "commands": [{
+    "command": "deno run -A ./tests/fold.ts -w 30",
+    "exts": "txt"
+  }]
+} ~~
 == Process returns the formatted text via stdout ==
 this should be wrapped because it is a long text
 

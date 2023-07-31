@@ -1,5 +1,13 @@
 -- resources/alice29.txt --
-~~ lineWidth: 35, timeout: 3, fold: deno run -A ./tests/fold.ts -w {{line_width}} {{file_path}}, fold.stdin: false ~~
+~~ {
+  "lineWidth": 35,
+  "timeout": 3,
+  "commands": [{
+    "command": "deno run -A ./tests/fold.ts -w {{line_width}} {{file_path}}",
+    "exts": ["txt"],
+    "stdin": false
+  }]
+} ~~
 == Long text ==
 // does not matter
 

@@ -11,20 +11,13 @@ This plugin executes CLI commands to format code via stdin (recommended) or via 
 
 ## Configuration
 
-The configuration for dprint-plugin-exec is more complicated than most dprint plugins due to its nature.
-
-1. Specify an [`"associations"`](https://dprint.dev/config/#associations) property in the plugin config in order to get the files that match that pattern to format with this exec plugin.
 1. Add general configuration if desired (shown below).
-1. Add binaries similar to what's shown below and specify what file patterns they match via a `<command-name>.associations` property.
-   - You may omit this from one command in order to make any file pattern that doesn't match another command to be formatted with this command.
-   - You may have associations match multiple binaries in order to format a file with multiple binaries instead of just one. The order in the config file will dictate the order the formatting occurs in. This functionality requires at least dprint 0.23 because in previous versions the config key order was unstable.
+1. Add binaries similar to what's shown below and specify what file extensions they match via a `exts` property.
 
 ```jsonc
 {
   // ...etc...
   "exec": {
-    "associations": "**/*.{rs,java,py}",
-
     // general config (optional -- shown are the defaults)
     "lineWidth": 120,
     "indentWidth": 2,
@@ -34,14 +27,16 @@ The configuration for dprint-plugin-exec is more complicated than most dprint pl
     "timeout": 30,
 
     // now define your commands, for example...
-    "rustfmt": "rustfmt",
-    "rustfmt.associations": "**/*.rs",
-
-    "java": "java -jar formatter.jar {{file_path}}",
-    "java.associations": "**/*.java",
-
-    "yapf": "yapf",
-    "yapf.associations": "**/*.py"
+    "commands": [{
+      "command": "rustfmt",
+      "exts": ["rs"]
+    }, {
+      "command": "java -jar formatter.jar {{file_path}}",
+      "exts": ["java"]
+    }, {
+      "command": "yapf",
+      "exts": ["py"]
+    }]
   },
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
@@ -52,15 +47,17 @@ The configuration for dprint-plugin-exec is more complicated than most dprint pl
 General config:
 
 - `cacheKey` - Optional value used to bust dprint's incremental cache (ex. provide `"1"`). This is useful if you want to force formatting to occur because the underlying command's code has changed.
-- `timeout` - Number of seconds to allow an executable format to progress before a timeout error occurs (default: `30`).
+- `timeout` - Number of seconds to allow an executable format to occur before a timeout error occurs (default: `30`).
 
 Command config:
 
-- `<command-name>` - Command to execute.
-- `<command-name>.associations` - File patterns to format with this command.
-  - You may exclude this from one command to make it become the "catch-all"
-- `<command-name>.stdin` - If the text should be provided via stdin (default: `true`)
-- `<command-name>.cwd` - Current working directory to use when launching this command (default: dprint's cwd)
+- `command` - Command to execute.
+- `exts` - Array of file extensions to format with this command.
+- `fileNames` - Array of file names to format with this command (useful for files without extensions).
+- `associations` - File patterns to format with this command. If specified, then you MUST specify associations on this plugin's config as well.
+  - You may have associations match multiple binaries in order to format a file with multiple binaries instead of just one. The order in the config file will dictate the order the formatting occurs in.
+- `stdin` - If the text should be provided via stdin (default: `true`)
+- `cwd` - Current working directory to use when launching this command (default: dprint's cwd)
 
 Command templates (ex. see the prettier example above):
 
@@ -77,10 +74,10 @@ Command templates (ex. see the prettier example above):
 {
   // ...etc...
   "exec": {
-    "associations": "**/*.{py}",
-
-    "yapf": "yapf",
-    "yapf.associations": "**/*.py"
+    "commands": [{
+      "command": "yapf",
+      "exts": ["py"]
+    }]
   },
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
@@ -94,10 +91,10 @@ Command templates (ex. see the prettier example above):
 {
   // ...etc...
   "exec": {
-    "associations": "**/*.{java}",
-
-    "java": "java -jar formatter.jar {{file_path}}",
-    "java.associations": "**/*.java"
+    "commands": [{
+      "command": "java -jar formatter.jar {{file_path}}",
+      "exts": ["java"]
+    }]
   },
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
@@ -113,10 +110,10 @@ Use the `rustfmt` binary so you can format stdin.
 {
   // ...etc...
   "exec": {
-    "associations": "**/*.{rs}",
-
-    "rustfmt": "rustfmt --edition 2021",
-    "rustfmt.associations": "**/*.rs"
+    "commands": [{
+      "command": "rustfmt --edition 2021",
+      "exts": ["rs"]
+    }]
   },
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
@@ -132,10 +129,11 @@ Consider using [dprint-plugin-prettier](https://dprint.dev/plugins/prettier/) in
 {
   // ...etc...
   "exec": {
-    // add more extensions that prettier should format
-    "associations": "**/*.{js,ts,html}",
-
-    "prettier": "prettier --stdin-filepath {{file_path}} --tab-width {{indent_width}} --print-width {{line_width}}"
+    "commands": [{
+      "command": "prettier --stdin-filepath {{file_path}} --tab-width {{indent_width}} --print-width {{line_width}}",
+      // add more extensions that prettier should format
+      "exts": ["js", "ts", "html"]
+    }]
   },
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here

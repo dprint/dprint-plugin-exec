@@ -1,4 +1,11 @@
-~~ lineWidth: 35, timeout: 3, fold: deno run -A ./tests/fold.ts -w {{line_width}} ~~
+~~ {
+  "lineWidth": 35,
+  "timeout": 3,
+  "commands": [{
+    "command": "deno run -A ./tests/fold.ts -w {{line_width}}",
+    "exts": ["txt"]
+  }]
+} ~~
 == Long text ==
 
 

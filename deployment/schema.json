@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://plugins.dprint.dev/dprint/dprint-plugin-exec/0.0.0/schema.json",
   "type": "object",
-  "required": ["associations"],
+  "required": ["commands"],
   "properties": {
     "locked": {
       "description": "Whether the configuration is not allowed to be overriden or extended.",
@@ -69,34 +69,67 @@
       "description": "Number of seconds to allow a format to progress before a timeout error occurs.",
       "type": "number",
       "default": 30
-    }
-  },
-  "patternProperties": {
-    "^.*\\.associations$": {
-      "description": "Glob pattern that associates certain file paths with this command (ex. \"rustfmt.associations\": \"**/*.rs\").",
-      "anyOf": [{
-        "description": "Glob pattern that associates certain file paths with this command (ex. \"rustfmt.associations\": \"**/*.rs\").",
-        "type": "string"
-      }, {
-        "description": "Glob patterns that associates certain file paths with this command.",
-        "type": "array",
-        "items": {
+    },
+    "commands": {
+      "description": "Commands to format with.",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The commmand to execute to format with.",
           "type": "string"
+        },
+        "exts": {
+          "description": "File extensions to use this command for.",
+          "anyOf": [{
+            "description": "File extension to use this command for.",
+            "type": "string"
+          }, {
+            "description": "File extensions to use this command for.",
+            "type": "array",
+            "items": [{
+              "type": "string"
+            }]
+          }]
+        },
+        "fileNames": {
+          "description": "File names to format with this command. Useful for filenames without extensions",
+          "anyOf": [{
+            "description": "File name to format with this command. Useful for filenames without extensions.",
+            "type": "string"
+          }, {
+            "description": "File names to format with this command. Useful for filenames without extensions",
+            "type": "array",
+            "items": [{
+              "type": "string"
+            }]
+          }]
+        },
+        "stdin": {
+          "type": "boolean",
+          "description": "Whether to pass the file text in via stdin.",
+          "default": true
+        },
+        "cwd": {
+          "type": "string",
+          "description": "The current working directory to launch the executable with."
+        },
+        "associations": {
+          "description": "Glob pattern that associates certain file paths with this command. Prefer using 'exts' instead.",
+          "anyOf": [{
+            "description": "Glob pattern that associates certain file paths with this command.",
+            "type": "string"
+          }, {
+            "description": "Glob patterns that associates certain file paths with this command.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }]
         }
-      }]
-    },
-    "^.*\\.cwd$": {
-      "type": "string",
-      "description": "The current working directory to launch the executable with."
-    },
-    "^.*\\.stdin$": {
-      "type": "boolean",
-      "description": "Whether to pass the file text in via stdin.",
-      "default": true
+      },
+      "required": [
+        "command"
+      ]
     }
-  },
-  "additionalProperties": {
-    "type": "string",
-    "description": "Definition for a plugin command. Define the name and command with arguments to execute. Ex. `\"rustfmt\": \"rustfmt\"`"
   }
 }

@@ -6,7 +6,7 @@
     "exts": ["txt"]
   }]
 } ~~
-== Long text (only) ==
+== Long text ==
 // does not matter
 
 [expect]

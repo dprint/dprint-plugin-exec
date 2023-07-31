@@ -255,7 +255,7 @@ const ci = {
 
 Dependencies:
 
-- Install dprint's CLI >= 0.39.0
+- Install dprint's CLI >= 0.40.0
 
 In a dprint configuration file:
 

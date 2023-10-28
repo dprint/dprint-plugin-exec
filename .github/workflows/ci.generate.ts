@@ -129,7 +129,6 @@ const ci = {
           if: "!startsWith(github.ref, 'refs/tags/')",
           env: {
             "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc",
-            "CC_aarch64_unknown_linux_musl": "aarch64-linux-gnu-gcc",
           },
           run: "cargo build --locked --all-targets --target ${{matrix.config.target}}",
         },
@@ -138,7 +137,6 @@ const ci = {
           if: "startsWith(github.ref, 'refs/tags/')",
           env: {
             "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc",
-            "CC_aarch64_unknown_linux_musl": "aarch64-linux-gnu-gcc",
           },
           run: "cargo build --locked --all-targets --target ${{matrix.config.target}} --release",
         },

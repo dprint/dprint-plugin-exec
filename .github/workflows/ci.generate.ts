@@ -42,9 +42,7 @@ const profiles = profileDataItems.map((profile) => {
     ...profile,
     artifactsName: `${profile.target}-artifacts`,
     zipFileName: `dprint-plugin-exec-${profile.target}.zip`,
-    zipChecksumEnvVarName: `ZIP_CHECKSUM_${
-      profile.target.toUpperCase().replaceAll("-", "_")
-    }`,
+    zipChecksumEnvVarName: `ZIP_CHECKSUM_${profile.target.toUpperCase().replaceAll("-", "_")}`,
   };
 });
 
@@ -56,8 +54,7 @@ const ci = {
   },
   concurrency: {
     // https://stackoverflow.com/a/72408109/188246
-    group:
-      "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}",
+    group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}",
     "cancel-in-progress": true,
   },
   jobs: {
@@ -76,8 +73,8 @@ const ci = {
       outputs: Object.fromEntries(
         profiles.map((profile) => [
           profile.zipChecksumEnvVarName,
-          "${{steps.pre_release_" + profile.target.replaceAll("-", "_") +
-          ".outputs.ZIP_CHECKSUM}}",
+          "${{steps.pre_release_" + profile.target.replaceAll("-", "_")
+          + ".outputs.ZIP_CHECKSUM}}",
         ]),
       ),
       env: {
@@ -117,7 +114,8 @@ const ci = {
           if: "matrix.config.target == 'aarch64-unknown-linux-musl'",
           run: [
             "sudo apt update",
-            "sudo apt install musl musl-dev musl-tools clang llvm",
+            "sudo apt install gcc-aarch64-linux-gnu",
+            "sudo apt install musl musl-dev musl-tools",
             "rustup target add aarch64-unknown-linux-musl",
           ].join("\n"),
         },
@@ -130,21 +128,19 @@ const ci = {
           name: "Build (Debug)",
           if: "!startsWith(github.ref, 'refs/tags/')",
           env: {
-            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER":
-              "aarch64-linux-gnu-gcc",
+            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc",
+            "CC_aarch64_unknown_linux_musl": "aarch64-linux-gnu-gcc",
           },
-          run:
-            "cargo build --locked --all-targets --target ${{matrix.config.target}}",
+          run: "cargo build --locked --all-targets --target ${{matrix.config.target}}",
         },
         {
           name: "Build release",
           if: "startsWith(github.ref, 'refs/tags/')",
           env: {
-            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER":
-              "aarch64-linux-gnu-gcc",
+            "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc",
+            "CC_aarch64_unknown_linux_musl": "aarch64-linux-gnu-gcc",
           },
-          run:
-            "cargo build --locked --all-targets --target ${{matrix.config.target}} --release",
+          run: "cargo build --locked --all-targets --target ${{matrix.config.target}} --release",
         },
         {
           name: "Lint",
@@ -154,14 +150,12 @@ const ci = {
         },
         {
           name: "Test (Debug)",
-          if:
-            "matrix.config.run_tests == 'true' && !startsWith(github.ref, 'refs/tags/')",
+          if: "matrix.config.run_tests == 'true' && !startsWith(github.ref, 'refs/tags/')",
           run: "cargo test --locked --all-features",
         },
         {
           name: "Test (Release)",
-          if:
-            "matrix.config.run_tests == 'true' && startsWith(github.ref, 'refs/tags/')",
+          if: "matrix.config.run_tests == 'true' && startsWith(github.ref, 'refs/tags/')",
           run: "cargo test --locked --all-features --release",
         },
         // zip files
@@ -233,14 +227,12 @@ const ci = {
         },
         {
           name: "Create plugin file",
-          run:
-            "deno run --allow-read=. --allow-write=. scripts/create_plugin_file.ts",
+          run: "deno run --allow-read=. --allow-write=. scripts/create_plugin_file.ts",
         },
         {
           name: "Get tag version",
           id: "get_tag_version",
-          run:
-            "echo ::set-output name=TAG_VERSION::${GITHUB_REF/refs\\/tags\\//}",
+          run: "echo ::set-output name=TAG_VERSION::${GITHUB_REF/refs\\/tags\\//}",
         },
         {
           name: "Get plugin file checksum",

@@ -1,9 +1,5 @@
-# vscode
+.vs
 .vscode
-
-# IntelliJ project files
 *.iml
 /.idea
-
-# build directory
 /target

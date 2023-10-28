@@ -7,7 +7,6 @@ use dprint_plugin_exec::handler::ExecHandler;
 fn main() -> Result<()> {
   let rt = tokio::runtime::Builder::new_current_thread()
     .enable_time()
-    .enable_io()
     .build()
     .unwrap();
 

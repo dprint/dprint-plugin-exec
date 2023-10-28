@@ -14,9 +14,8 @@ fn test_specs() {
   let mut tests_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
   tests_dir.push("tests");
 
-  let runtime = tokio::runtime::Builder::new_multi_thread()
+  let runtime = tokio::runtime::Builder::new_current_thread()
     .enable_time()
-    .enable_io()
     .build()
     .unwrap();
   let handle = runtime.handle().clone();
@@ -43,10 +42,12 @@ fn test_specs() {
           file = td.clone();
         }
 
+        eprintln!("{}", file_name.display());
+        let file_text = file_text.to_string();
         handle.block_on(async {
           dprint_plugin_exec::handler::format_text(
             file,
-            file_text.to_string(),
+            file_text,
             Arc::new(config_result.config),
             Arc::new(dprint_core::plugins::NullCancellationToken),
           )

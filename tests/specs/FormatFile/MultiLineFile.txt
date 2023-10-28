@@ -1,5 +1,11 @@
 -- resources/multi-line.txt --
-~~ lineWidth: 42, fold: deno run -A ./tests/fold.ts -w {{line_width}} {{file_path}} ~~
+~~ {
+  "lineWidth": 42,
+  "commands": [{
+    "command": "deno run -A ./tests/fold.ts -w {{line_width}} {{file_path}}",
+    "exts": ["txt"]
+  }]
+} ~~
 == Long text ==
 // does not matter
 

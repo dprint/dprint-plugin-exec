@@ -14,9 +14,8 @@ fn test_specs() {
   let mut tests_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
   tests_dir.push("tests");
 
-  let runtime = tokio::runtime::Builder::new_multi_thread()
+  let runtime = tokio::runtime::Builder::new_current_thread()
     .enable_time()
-    .enable_io()
     .build()
     .unwrap();
   let handle = runtime.handle().clone();
@@ -32,8 +31,8 @@ fn test_specs() {
     },
     {
       move |file_name, file_text, spec_config| {
-        let config_result =
-          Configuration::resolve(parse_config_key_map(spec_config), &Default::default());
+        let map: ConfigKeyMap = serde_json::from_value(spec_config.clone().into()).unwrap();
+        let config_result = Configuration::resolve(map, &Default::default());
         ensure_no_diagnostics(&config_result.diagnostics);
 
         let mut file = file_name.to_path_buf();
@@ -43,10 +42,12 @@ fn test_specs() {
           file = td.clone();
         }
 
+        eprintln!("{}", file_name.display());
+        let file_text = file_text.to_string();
         handle.block_on(async {
           dprint_plugin_exec::handler::format_text(
             file,
-            file_text.to_string(),
+            file_text,
             Arc::new(config_result.config),
             Arc::new(dprint_core::plugins::NullCancellationToken),
           )

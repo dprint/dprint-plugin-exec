@@ -267,7 +267,7 @@ const ci = {
 
 Dependencies:
 
-- Install dprint's CLI >= 0.24.0
+- Install dprint's CLI >= 0.40.0
 
 In a dprint configuration file:
 
@@ -280,8 +280,7 @@ In a dprint configuration file:
      ]
    }
    \`\`\`
-2. Ensure the file extensions necessary are matched in an "includes" pattern.
-3. Follow the configuration setup instructions found at https://github.com/dprint/dprint-plugin-exec#configuration`,
+2. Follow the configuration setup instructions found at https://github.com/dprint/dprint-plugin-exec#configuration`,
             draft: false,
           },
         },

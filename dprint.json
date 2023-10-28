@@ -3,21 +3,20 @@
   "indentWidth": 2,
   "lineWidth": 100,
   "exec": {
-    "associations": "**/*.rs",
-    "rustfmt": "rustfmt --edition 2021"
+    "commands": [{
+      "command": "rustfmt --edition 2021 --config imports_granularity=item",
+      "exts": ["rs"]
+    }]
   },
-  "includes": [
-    "**/*.{json,md,html,scss,css,toml,rs,xml}"
-  ],
   "excludes": [
     "**/dist",
     "**/target",
     "**/*-lock.json"
   ],
   "plugins": [
-    "https://plugins.dprint.dev/json-0.14.1.wasm",
-    "https://plugins.dprint.dev/markdown-0.12.2.wasm",
+    "https://plugins.dprint.dev/json-0.17.4.wasm",
+    "https://plugins.dprint.dev/markdown-0.15.3.wasm",
     "https://plugins.dprint.dev/toml-0.5.4.wasm",
-    "https://plugins.dprint.dev/exec-0.3.2.json@8efbbb3fcfbdf84142c3c438fbdeaf1637152a020032127c837b2b14e23261c3"
+    "https://plugins.dprint.dev/exec-0.4.2.json@ca3c3d1cc1105b4ac1c31afdb26791a90209f13a5950f8de00dcab5e5ee293a7"
   ]
 }

@@ -5,7 +5,6 @@ use dprint_core::configuration::ConfigKeyMap;
 use dprint_core::configuration::ConfigKeyValue;
 use dprint_core::configuration::ConfigurationDiagnostic;
 use dprint_core::configuration::GlobalConfiguration;
-use dprint_core::configuration::NewLineKind;
 use dprint_core::configuration::ResolveConfigurationResult;
 use dprint_core::configuration::RECOMMENDED_GLOBAL_CONFIGURATION;
 use globset::GlobMatcher;
@@ -24,7 +23,6 @@ pub struct Configuration {
   pub line_width: u32,
   pub use_tabs: bool,
   pub indent_width: u8,
-  pub new_line_kind: NewLineKind,
   /// Formatting commands to run
   pub commands: Vec<CommandConfiguration>,
   pub timeout: u32,
@@ -122,14 +120,6 @@ impl Configuration {
         global_config
           .indent_width
           .unwrap_or(RECOMMENDED_GLOBAL_CONFIGURATION.indent_width),
-        &mut diagnostics,
-      ),
-      new_line_kind: get_value(
-        &mut config,
-        "newLineKind",
-        global_config
-          .new_line_kind
-          .unwrap_or(RECOMMENDED_GLOBAL_CONFIGURATION.new_line_kind),
         &mut diagnostics,
       ),
       commands: Vec::new(),
@@ -343,7 +333,6 @@ mod tests {
   use super::*;
   use dprint_core::configuration::resolve_global_config;
   use dprint_core::configuration::ConfigKeyValue;
-  use dprint_core::configuration::NewLineKind;
   use pretty_assertions::assert_eq;
   use serde_json::json;
 
@@ -352,14 +341,12 @@ mod tests {
     let mut global_config = ConfigKeyMap::from([
       ("lineWidth".to_string(), ConfigKeyValue::from_i32(80)),
       ("indentWidth".to_string(), ConfigKeyValue::from_i32(8)),
-      ("newLineKind".to_string(), ConfigKeyValue::from_str("crlf")),
       ("useTabs".to_string(), ConfigKeyValue::from_bool(true)),
     ]);
     let global_config = resolve_global_config(&mut global_config).config;
     let config = Configuration::resolve(ConfigKeyMap::new(), &global_config).config;
     assert_eq!(config.line_width, 80);
     assert_eq!(config.indent_width, 8);
-    assert_eq!(config.new_line_kind, NewLineKind::CarriageReturnLineFeed);
     assert!(config.use_tabs);
   }
 
@@ -373,7 +360,6 @@ mod tests {
     let config = result.config;
     assert_eq!(config.line_width, 120);
     assert_eq!(config.indent_width, 2);
-    assert_eq!(config.new_line_kind, NewLineKind::LineFeed);
     assert!(!config.use_tabs);
     assert_eq!(config.cache_key, "2");
     assert_eq!(config.timeout, 5);

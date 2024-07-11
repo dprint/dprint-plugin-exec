@@ -30,24 +30,6 @@
         "description": ""
       }]
     },
-    "newLineKind": {
-      "description": "The kind of newline to use.",
-      "type": "string",
-      "default": "lf",
-      "oneOf": [{
-        "const": "auto",
-        "description": "For each file, uses the newline kind found at the end of the last line."
-      }, {
-        "const": "crlf",
-        "description": "Uses carriage return, line feed."
-      }, {
-        "const": "lf",
-        "description": "Uses line feed."
-      }, {
-        "const": "system",
-        "description": "Uses the system standard (ex. crlf on Windows)."
-      }]
-    },
     "associations": {
       "description": "Glob pattern that associates this plugin with certain file paths (ex. \"**/*.{rs,java,py}\").",
       "anyOf": [{

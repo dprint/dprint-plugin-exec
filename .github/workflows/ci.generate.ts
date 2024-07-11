@@ -1,7 +1,7 @@
 import * as yaml from "https://deno.land/std@0.170.0/encoding/yaml.ts";
 
 enum OperatingSystem {
-  Macx86 = "macos-13",
+  Macx86 = "macos-12",
   MacArm = "macos-latest",
   Windows = "windows-latest",
   Linux = "ubuntu-20.04",

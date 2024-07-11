@@ -136,6 +136,8 @@ impl Configuration {
       timeout: get_value(&mut config, "timeout", 30, &mut diagnostics),
     };
 
+    let root_cwd = get_nullable_value(&mut config, "cwd", &mut diagnostics);
+
     if let Some(commands) = config.remove("commands").and_then(|c| c.into_array()) {
       for (i, element) in commands.into_iter().enumerate() {
         let Some(command_obj) = element.into_object() else {
@@ -145,7 +147,7 @@ impl Configuration {
           });
           continue;
         };
-        let result = parse_command_obj(command_obj);
+        let result = parse_command_obj(command_obj, root_cwd.as_ref());
         diagnostics.extend(result.1.into_iter().map(|mut diagnostic| {
           diagnostic.property_name = format!("commands[{}].{}", i, diagnostic.property_name);
           diagnostic
@@ -174,6 +176,7 @@ impl Configuration {
 
 fn parse_command_obj(
   mut command_obj: ConfigKeyMap,
+  root_cwd: Option<&String>,
 ) -> (Option<CommandConfiguration>, Vec<ConfigurationDiagnostic>) {
   let mut diagnostics = Vec::new();
   let mut command = splitty::split_unquoted_whitespace(&get_value(
@@ -259,11 +262,10 @@ fn parse_command_obj(
         }
       })
     },
-    cwd: get_cwd(get_nullable_value(
-      &mut command_obj,
-      "cwd",
-      &mut diagnostics,
-    )),
+    cwd: get_cwd(
+      get_nullable_value(&mut command_obj, "cwd", &mut diagnostics)
+        .or_else(|| root_cwd.map(ToOwned::to_owned)),
+    ),
     stdin: get_value(&mut command_obj, "stdin", true, &mut diagnostics),
     file_extensions: take_string_or_string_vec(&mut command_obj, "exts", &mut diagnostics)
       .into_iter()
@@ -395,6 +397,23 @@ mod tests {
         message: "Expected to find a command name.".to_string(),
       }],
     )
+  }
+
+  #[test]
+  fn cwd_test() {
+    let unresolved_config = parse_config(json!({
+      "cwd": "test-cwd",
+      "commands": [{
+        "command": "1"
+      }, {
+        "cwd": "test-cwd2",
+        "command": "1"
+      }]
+    }));
+    let result = Configuration::resolve(unresolved_config, &Default::default());
+    let config = result.config;
+    assert_eq!(config.commands[0].cwd, PathBuf::from("test-cwd"));
+    assert_eq!(config.commands[1].cwd, PathBuf::from("test-cwd2"));
   }
 
   #[test]

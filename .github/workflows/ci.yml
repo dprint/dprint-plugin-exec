@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         config:
-          - os: macos-14
+          - os: macos-13
             run_tests: 'true'
             target: x86_64-apple-darwin
           - os: macos-latest
@@ -78,8 +78,6 @@ jobs:
           sudo apt install gcc-aarch64-linux-gnu
           sudo apt install musl musl-dev musl-tools
           rustup target add aarch64-unknown-linux-musl
-      - name: Rustup setup
-        run: 'rustup target add ${{matrix.config.target}}'
       - name: Build (Debug)
         if: '!startsWith(github.ref, ''refs/tags/'')'
         env:

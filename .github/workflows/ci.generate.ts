@@ -1,7 +1,7 @@
 import * as yaml from "https://deno.land/std@0.170.0/encoding/yaml.ts";
 
 enum OperatingSystem {
-  Macx86 = "macos-14",
+  Macx86 = "macos-13",
   MacArm = "macos-latest",
   Windows = "windows-latest",
   Linux = "ubuntu-20.04",
@@ -119,12 +119,6 @@ const ci = {
             "sudo apt install gcc-aarch64-linux-gnu",
             "sudo apt install musl musl-dev musl-tools",
             "rustup target add aarch64-unknown-linux-musl",
-          ].join("\n"),
-        },
-        {
-          name: "Rustup setup",
-          run: [
-            "rustup target add ${{matrix.config.target}}",
           ].join("\n"),
         },
         {

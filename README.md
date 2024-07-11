@@ -18,16 +18,15 @@ This plugin executes CLI commands to format code via stdin (recommended) or via 
 {
   // ...etc...
   "exec": {
+    // lets the plugin know the cwd, see https://dprint.dev/config/#configuration-variables
+    "cwd": "${configDir}",
+
     // general config (optional -- shown are the defaults)
     "lineWidth": 120,
     "indentWidth": 2,
     "useTabs": false,
     "cacheKey": "1",
     "timeout": 30,
-
-    // you may need to set this for when the dprint executable has a different
-    // cwd than this configuration file (see https://dprint.dev/config/#configuration-variables)
-    "cwd": "${configDir}",
 
     // now define your commands, for example...
     "commands": [{
@@ -96,6 +95,7 @@ Command templates (ex. see the prettier example above):
 {
   // ...etc...
   "exec": {
+    "cwd": "${configDir}",
     "commands": [{
       "command": "java -jar formatter.jar {{file_path}}",
       "exts": ["java"]
@@ -115,8 +115,8 @@ Use the `rustfmt` binary so you can format stdin.
 {
   // ...etc...
   "exec": {
+    "cwd": "${configDir}",
     "commands": [{
-      "cwd": "${configDir}",
       "command": "rustfmt --edition 2021",
       "exts": ["rs"]
     }]
@@ -135,6 +135,7 @@ Consider using [dprint-plugin-prettier](https://dprint.dev/plugins/prettier/) in
 {
   // ...etc...
   "exec": {
+    "cwd": "${configDir}",
     "commands": [{
       "command": "prettier --stdin-filepath {{file_path}} --tab-width {{indent_width}} --print-width {{line_width}}",
       // add more extensions that prettier should format

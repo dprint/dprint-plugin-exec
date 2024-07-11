@@ -138,7 +138,7 @@ impl Configuration {
 
     let root_cwd = get_nullable_value(&mut config, "cwd", &mut diagnostics);
 
-    if let Some(commands) = config.remove("commands").and_then(|c| c.into_array()) {
+    if let Some(commands) = config.swap_remove("commands").and_then(|c| c.into_array()) {
       for (i, element) in commands.into_iter().enumerate() {
         let Some(command_obj) = element.into_object() else {
           diagnostics.push(ConfigurationDiagnostic {
@@ -215,7 +215,7 @@ fn parse_command_obj(
     executable: command.remove(0),
     args: command,
     associations: {
-      let maybe_value = command_obj.remove("associations").and_then(|value| match value {
+      let maybe_value = command_obj.swap_remove("associations").and_then(|value| match value {
         ConfigKeyValue::String(value) => Some(value),
         ConfigKeyValue::Array(mut value) => match value.len() {
           0 => None,
@@ -302,7 +302,7 @@ fn take_string_or_string_vec(
   diagnostics: &mut Vec<ConfigurationDiagnostic>,
 ) -> Vec<String> {
   command_obj
-    .remove(key)
+    .swap_remove(key)
     .map(|values| match values {
       ConfigKeyValue::String(value) => vec![value],
       ConfigKeyValue::Array(elements) => {

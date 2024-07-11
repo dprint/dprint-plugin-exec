@@ -6,4 +6,4 @@ pub mod handler;
 #[cfg(feature = "process")]
 pub use main::*;
 
-pub use handler::format_text;
+pub use handler::format_bytes;

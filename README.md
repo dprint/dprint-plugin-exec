@@ -22,7 +22,6 @@ This plugin executes CLI commands to format code via stdin (recommended) or via 
     "lineWidth": 120,
     "indentWidth": 2,
     "useTabs": false,
-    "newLineKind": "lf",
     "cacheKey": "1",
     "timeout": 30,
 

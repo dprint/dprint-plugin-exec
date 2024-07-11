@@ -29,32 +29,31 @@ fn test_specs() {
       fix_failures: false,
       format_twice: true,
     },
-    {
-      move |file_name, file_text, spec_config| {
-        let map: ConfigKeyMap = serde_json::from_value(spec_config.clone().into()).unwrap();
-        let config_result = Configuration::resolve(map, &Default::default());
-        ensure_no_diagnostics(&config_result.diagnostics);
+    Arc::new(move |file_name, file_text, spec_config| {
+      let map: ConfigKeyMap = serde_json::from_value(spec_config.clone().into()).unwrap();
+      let config_result = Configuration::resolve(map, &Default::default());
+      ensure_no_diagnostics(&config_result.diagnostics);
 
-        let mut file = file_name.to_path_buf();
-        let mut td = tests_dir.clone();
-        if !file_name.ends_with(Path::new("default.txt")) {
-          td.push(file_name);
-          file = td.clone();
-        }
-
-        eprintln!("{}", file_name.display());
-        let file_text = file_text.to_string();
-        handle.block_on(async {
-          dprint_plugin_exec::handler::format_text(
-            file,
-            file_text,
-            Arc::new(config_result.config),
-            Arc::new(dprint_core::plugins::NullCancellationToken),
-          )
-          .await
-        })
+      let mut file = file_name.to_path_buf();
+      let mut td = tests_dir.clone();
+      if !file_name.ends_with(Path::new("default.txt")) {
+        td.push(file_name);
+        file = td.clone();
       }
-    },
-    move |_file_name, _file_text, _spec_config| panic!("Not supported."),
+
+      eprintln!("{}", file_name.display());
+      let file_text = file_text.to_string();
+      handle.block_on(async {
+        dprint_plugin_exec::handler::format_bytes(
+          file,
+          file_text.into_bytes(),
+          Arc::new(config_result.config),
+          Arc::new(dprint_core::plugins::NullCancellationToken),
+        )
+        .await
+        .map(|maybe_bytes| maybe_bytes.map(|bytes| String::from_utf8(bytes).unwrap()))
+      })
+    }),
+    Arc::new(move |_file_name, _file_text, _spec_config| panic!("Not supported.")),
   )
 }

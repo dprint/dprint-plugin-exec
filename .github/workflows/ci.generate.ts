@@ -1,7 +1,8 @@
 import * as yaml from "https://deno.land/std@0.170.0/encoding/yaml.ts";
 
 enum OperatingSystem {
-  Mac = "macOS-latest",
+  Macx86 = "macos-12",
+  MacArm = "macos-latest",
   Windows = "windows-latest",
   Linux = "ubuntu-20.04",
 }
@@ -13,12 +14,13 @@ interface ProfileData {
 }
 
 const profileDataItems: ProfileData[] = [{
-  os: OperatingSystem.Mac,
+  os: OperatingSystem.Macx86,
   target: "x86_64-apple-darwin",
   runTests: true,
 }, {
-  os: OperatingSystem.Mac,
+  os: OperatingSystem.MacArm,
   target: "aarch64-apple-darwin",
+  runTests: true,
 }, {
   os: OperatingSystem.Windows,
   target: "x86_64-pc-windows-msvc",
@@ -83,7 +85,7 @@ const ci = {
         RUST_BACKTRACE: "full",
       },
       steps: [
-        { uses: "actions/checkout@v2" },
+        { uses: "actions/checkout@v4" },
         { uses: "dsherret/rust-toolchain-file@v1" },
         {
           name: "Cache cargo",
@@ -118,11 +120,6 @@ const ci = {
             "sudo apt install musl musl-dev musl-tools",
             "rustup target add aarch64-unknown-linux-musl",
           ].join("\n"),
-        },
-        {
-          name: "Setup (Mac aarch64)",
-          if: "matrix.config.target == 'aarch64-apple-darwin'",
-          run: "rustup target add aarch64-apple-darwin",
         },
         {
           name: "Build (Debug)",
@@ -160,7 +157,8 @@ const ci = {
         ...profiles.map((profile) => {
           function getRunSteps() {
             switch (profile.os) {
-              case OperatingSystem.Mac:
+              case OperatingSystem.MacArm:
+              case OperatingSystem.Macx86:
                 return [
                   `cd target/${profile.target}/release`,
                   `zip -r ${profile.zipFileName} dprint-plugin-exec`,

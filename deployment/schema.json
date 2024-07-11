@@ -30,24 +30,6 @@
         "description": ""
       }]
     },
-    "newLineKind": {
-      "description": "The kind of newline to use.",
-      "type": "string",
-      "default": "lf",
-      "oneOf": [{
-        "const": "auto",
-        "description": "For each file, uses the newline kind found at the end of the last line."
-      }, {
-        "const": "crlf",
-        "description": "Uses carriage return, line feed."
-      }, {
-        "const": "lf",
-        "description": "Uses line feed."
-      }, {
-        "const": "system",
-        "description": "Uses the system standard (ex. crlf on Windows)."
-      }]
-    },
     "associations": {
       "description": "Glob pattern that associates this plugin with certain file paths (ex. \"**/*.{rs,java,py}\").",
       "anyOf": [{
@@ -64,6 +46,10 @@
     "cacheKey": {
       "description": "Optional value used to bust dprint's incremental cache (ex. provide \"1\"). This is useful if you want to force formatting to occur because the underlying command has changed.",
       "type": "string"
+    },
+    "cwd": {
+      "type": "string",
+      "description": "The current working directory to launch all executables with."
     },
     "timeout": {
       "description": "Number of seconds to allow a format to progress before a timeout error occurs.",

@@ -18,15 +18,15 @@ overflow-checks = false
 panic = "abort"
 
 [dependencies]
-anyhow = "1.0.68"
-dprint-core = { version = "0.63.3", features = ["process"] }
-globset = "0.4.13"
-handlebars = "4.4.0"
-serde = { version = "1.0.147", features = ["derive"] }
+anyhow = "1.0.86"
+dprint-core = { version = "0.67.0", features = ["process"] }
+globset = "0.4.14"
+handlebars = "5.1.2"
+serde = { version = "1.0.204", features = ["derive"] }
 splitty = "1.0.1"
-tokio = { version = "1.33.0", features = ["time"] }
+tokio = { version = "1.38.0", features = ["time"] }
 
 [dev-dependencies]
-dprint-development = "0.9.5"
+dprint-development = "0.10.1"
 pretty_assertions = "1.4.0"
-serde_json = "1.0.107"
+serde_json = "1.0.120"

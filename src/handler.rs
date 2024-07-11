@@ -1,6 +1,4 @@
 use std::borrow::Cow;
-use std::io::BufRead;
-use std::io::BufReader;
 use std::io::Write;
 use std::ops::Deref;
 use std::ops::DerefMut;
@@ -18,10 +16,8 @@ use anyhow::Error;
 use anyhow::Result;
 use dprint_core::async_runtime::async_trait;
 use dprint_core::async_runtime::LocalBoxFuture;
-use dprint_core::configuration::resolve_new_line_kind;
 use dprint_core::configuration::ConfigKeyMap;
 use dprint_core::configuration::GlobalConfiguration;
-use dprint_core::configuration::NewLineKind;
 use dprint_core::plugins::AsyncPluginHandler;
 use dprint_core::plugins::CancellationToken;
 use dprint_core::plugins::FileMatchingInfo;
@@ -128,9 +124,9 @@ impl AsyncPluginHandler for ExecHandler {
       return Ok(None);
     }
 
-    format_text(
+    format_bytes(
       request.file_path,
-      request.file_text,
+      request.file_bytes,
       request.config,
       request.token.clone(),
     )
@@ -138,13 +134,36 @@ impl AsyncPluginHandler for ExecHandler {
   }
 }
 
-pub async fn format_text(
+pub async fn format_bytes(
   file_path: PathBuf,
-  original_file_text: String,
+  original_file_bytes: Vec<u8>,
   config: Arc<Configuration>,
   token: Arc<dyn CancellationToken>,
 ) -> FormatResult {
-  let mut file_text: Cow<str> = Cow::Borrowed(&original_file_text);
+  fn trim_bytes_len(bytes: &[u8]) -> usize {
+    let mut start = 0;
+    let mut end = bytes.len();
+
+    while start < end && bytes[start].is_ascii_whitespace() {
+      start += 1;
+    }
+
+    if start == end {
+      return 0;
+    }
+
+    while end > start && bytes[end - 1].is_ascii_whitespace() {
+      end -= 1;
+    }
+
+    if end < start {
+      0
+    } else {
+      end - start
+    }
+  }
+
+  let mut file_bytes: Cow<Vec<u8>> = Cow::Borrowed(&original_file_bytes);
   for command in select_commands(&config, &file_path)? {
     // format here
     let args = maybe_substitute_variables(&file_path, &config, command);
@@ -168,9 +187,8 @@ pub async fn format_text(
     let (out_tx, out_rx) = oneshot::channel();
     let mut handles = Vec::with_capacity(2);
     if let Some(stdout) = child.stdout.take() {
-      let eol = resolve_new_line_kind(&file_text, config.new_line_kind);
       handles.push(dprint_core::async_runtime::spawn_blocking(|| {
-        read_stream_lines(stdout, eol, out_tx)
+        read_stream_lines(stdout, out_tx)
       }));
     } else {
       let _ = child.kill();
@@ -180,9 +198,8 @@ pub async fn format_text(
     // capturing stderr
     let (err_tx, err_rx) = oneshot::channel();
     if let Some(stderr) = child.stderr.take() {
-      let system_eol = resolve_new_line_kind(&file_text, NewLineKind::System);
       handles.push(dprint_core::async_runtime::spawn_blocking(|| {
-        read_stream_lines(stderr, system_eol, err_tx)
+        read_stream_lines(stderr, err_tx)
       }));
     }
 
@@ -196,10 +213,10 @@ pub async fn format_text(
             "Cannot open the command's stdin. Perhaps you meant to set the command's \"stdin\" configuration to false?",
           )
         })?;
-      let file_text = file_text.to_string();
+      let file_bytes = file_bytes.into_owned();
       dprint_core::async_runtime::spawn_blocking(move || {
         stdin
-          .write_all(file_text.as_bytes())
+          .write_all(&file_bytes)
           .map_err(|err| anyhow!("Cannot write into the command's stdin. {}", err))
       })
       .await??;
@@ -235,15 +252,17 @@ pub async fn format_text(
       }
       result = result_future => {
         let (ok_text, exit_status) = result?;
-        file_text = Cow::Owned(handle_child_exit_status(ok_text, err_rx, exit_status).await?)
+        file_bytes = Cow::Owned(handle_child_exit_status(ok_text, err_rx, exit_status).await?)
       }
     }
   }
 
   const MIN_CHARS_TO_EMPTY: usize = 100;
-  Ok(if file_text == original_file_text {
+  Ok(if *file_bytes == original_file_bytes {
     None
-  } else if original_file_text.trim().len() > MIN_CHARS_TO_EMPTY && file_text.trim().is_empty() {
+  } else if trim_bytes_len(&original_file_bytes) > MIN_CHARS_TO_EMPTY
+    && trim_bytes_len(&file_bytes) == 0
+  {
     // prevent someone formatting all their files to empty files
     bail!(
       concat!(
@@ -253,7 +272,7 @@ pub async fn format_text(
       MIN_CHARS_TO_EMPTY
     )
   } else {
-    Some(file_text.to_string())
+    Some(file_bytes.into_owned())
   })
 }
 
@@ -282,19 +301,21 @@ fn select_commands<'a>(
 }
 
 async fn handle_child_exit_status(
-  ok_text: String,
-  err_rx: Receiver<String>,
+  ok_text: Vec<u8>,
+  err_rx: Receiver<Vec<u8>>,
   exit_status: ExitStatus,
-) -> Result<String, Error> {
+) -> Result<Vec<u8>, Error> {
   if exit_status.success() {
     return Ok(ok_text);
   }
   Err(anyhow!(
     "Child process exited with code {}: {}",
     exit_status.code().unwrap(),
-    err_rx
-      .await
-      .expect("Could not propagate error message from child process")
+    String::from_utf8_lossy(
+      &err_rx
+        .await
+        .expect("Could not propagate error message from child process")
+    )
   ))
 }
 
@@ -305,17 +326,13 @@ fn timeout_err(config: &Configuration) -> Error {
   )
 }
 
-fn read_stream_lines<R>(readable: R, eol: &str, sender: Sender<String>) -> Result<(), Error>
+fn read_stream_lines<R>(mut readable: R, sender: Sender<Vec<u8>>) -> Result<(), Error>
 where
   R: std::io::Read + Unpin,
 {
-  let mut reader = BufReader::new(readable).lines();
-  let mut formatted = String::new();
-  while let Some(line) = reader.next() {
-    formatted.push_str(line?.as_str());
-    formatted.push_str(eol);
-  }
-  let _ignore = sender.send(formatted); // ignore error as that means the other end is closed
+  let mut bytes = Vec::new();
+  readable.read_to_end(&mut bytes)?;
+  let _ignore = sender.send(bytes); // ignore error as that means the other end is closed
   Ok(())
 }
 
@@ -364,7 +381,7 @@ mod test {
   use dprint_core::plugins::NullCancellationToken;
 
   use crate::configuration::Configuration;
-  use crate::format_text;
+  use crate::format_bytes;
 
   #[tokio::test]
   async fn should_error_output_empty_file() {
@@ -377,9 +394,9 @@ mod test {
     }"#;
     let unresolved_config = serde_json::from_str(unresolved_config).unwrap();
     let config = Configuration::resolve(unresolved_config, &Default::default()).config;
-    let result = format_text(
+    let result = format_bytes(
       PathBuf::from("path.txt"),
-      "1".repeat(101),
+      "1".repeat(101).into_bytes(),
       Arc::new(config),
       token,
     )

@@ -22,9 +22,12 @@ This plugin executes CLI commands to format code via stdin (recommended) or via 
     "lineWidth": 120,
     "indentWidth": 2,
     "useTabs": false,
-    "newLineKind": "lf",
     "cacheKey": "1",
     "timeout": 30,
+
+    // you may need to set this for when the dprint executable has a different
+    // cwd than this configuration file (see https://dprint.dev/config/#configuration-variables)
+    "cwd": "${configDir}",
 
     // now define your commands, for example...
     "commands": [{
@@ -48,6 +51,7 @@ General config:
 
 - `cacheKey` - Optional value used to bust dprint's incremental cache (ex. provide `"1"`). This is useful if you want to force formatting to occur because the underlying command's code has changed.
 - `timeout` - Number of seconds to allow an executable format to occur before a timeout error occurs (default: `30`).
+- `cwd` - Recommend setting this to `${configDir}` to force it to use the cwd of the current config file.
 
 Command config:
 
@@ -57,7 +61,7 @@ Command config:
 - `associations` - File patterns to format with this command. If specified, then you MUST specify associations on this plugin's config as well.
   - You may have associations match multiple binaries in order to format a file with multiple binaries instead of just one. The order in the config file will dictate the order the formatting occurs in.
 - `stdin` - If the text should be provided via stdin (default: `true`)
-- `cwd` - Current working directory to use when launching this command (default: dprint's cwd)
+- `cwd` - Current working directory to use when launching this command (default: dprint's cwd or the root `cwd` setting if set)
 
 Command templates (ex. see the prettier example above):
 
@@ -74,6 +78,7 @@ Command templates (ex. see the prettier example above):
 {
   // ...etc...
   "exec": {
+    "cwd": "${configDir}",
     "commands": [{
       "command": "yapf",
       "exts": ["py"]
@@ -111,6 +116,7 @@ Use the `rustfmt` binary so you can format stdin.
   // ...etc...
   "exec": {
     "commands": [{
+      "cwd": "${configDir}",
       "command": "rustfmt --edition 2021",
       "exts": ["rs"]
     }]

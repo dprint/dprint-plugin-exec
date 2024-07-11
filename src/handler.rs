@@ -309,9 +309,8 @@ fn read_stream_lines<R>(readable: R, eol: &str, sender: Sender<String>) -> Resul
 where
   R: std::io::Read + Unpin,
 {
-  let mut reader = BufReader::new(readable).lines();
   let mut formatted = String::new();
-  while let Some(line) = reader.next() {
+  for line in BufReader::new(readable).lines() {
     formatted.push_str(line?.as_str());
     formatted.push_str(eol);
   }

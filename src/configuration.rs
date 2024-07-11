@@ -328,7 +328,7 @@ fn take_string_or_string_vec(
         vec![]
       }
     })
-    .unwrap_or_else(Vec::new)
+    .unwrap_or_default()
 }
 
 fn get_cwd(dir: Option<String>) -> PathBuf {

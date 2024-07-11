@@ -122,6 +122,12 @@ const ci = {
           ].join("\n"),
         },
         {
+          name: "Rustup setup",
+          run: [
+            "rustup target add ${{matrix.config.target}}",
+          ].join("\n"),
+        },
+        {
           name: "Build (Debug)",
           if: "!startsWith(github.ref, 'refs/tags/')",
           env: {

@@ -1,4 +1,4 @@
-import { generateChangeLog } from "https://raw.githubusercontent.com/dprint/automation/0.9.0/changelog.ts";
+import { generateChangeLog } from "https://raw.githubusercontent.com/dprint/automation/0.10.0/changelog.ts";
 
 const version = Deno.args[0];
 const checksum = Deno.args[1];

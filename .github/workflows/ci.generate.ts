@@ -38,6 +38,9 @@ const profileDataItems: ProfileData[] = [{
 }, {
   os: OperatingSystem.Linux,
   target: "aarch64-unknown-linux-musl",
+}, {
+  os: OperatingSystem.Linux,
+  target: "riscv64gc-unknown-linux-gnu",
 }];
 const profiles = profileDataItems.map((profile) => {
   return {
@@ -92,7 +95,7 @@ const ci = {
           if: "startsWith(github.ref, 'refs/tags/') != true",
           uses: "Swatinem/rust-cache@v2",
         },
-        { uses: "denoland/setup-deno@v1" },
+        { uses: "denoland/setup-deno@v2" },
         {
           name: "Setup (Linux x86_64-musl)",
           if: "matrix.config.target == 'x86_64-unknown-linux-musl'",
@@ -116,9 +119,17 @@ const ci = {
           if: "matrix.config.target == 'aarch64-unknown-linux-musl'",
           run: [
             "sudo apt update",
-            "sudo apt install gcc-aarch64-linux-gnu",
-            "sudo apt install musl musl-dev musl-tools",
+            "sudo apt install gcc-aarch64-linux-gnu musl musl-dev musl-tools",
             "rustup target add aarch64-unknown-linux-musl",
+          ].join("\n"),
+        },
+        {
+          name: "Setup (Linux riscv64gc)",
+          if: "matrix.config.target == 'riscv64gc-unknown-linux-gnu'",
+          run: [
+            "sudo apt update",
+            "sudo apt-get install gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libc6-dev-riscv64-cros",
+            "rustup target add riscv64gc-unknown-linux-gnu",
           ].join("\n"),
         },
         {
@@ -126,6 +137,7 @@ const ci = {
           if: "!startsWith(github.ref, 'refs/tags/')",
           env: {
             "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc",
+            "CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER": "riscv64-unknown-linux-gnu-gcc",
           },
           run: "cargo build --locked --all-targets --target ${{matrix.config.target}}",
         },
@@ -134,6 +146,7 @@ const ci = {
           if: "startsWith(github.ref, 'refs/tags/')",
           env: {
             "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc",
+            "CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER": "riscv64-unknown-linux-gnu-gcc",
           },
           run: "cargo build --locked --all-targets --target ${{matrix.config.target}} --release",
         },
@@ -206,9 +219,9 @@ const ci = {
       needs: "build",
       "runs-on": "ubuntu-latest",
       steps: [
-        { name: "Checkout", uses: "actions/checkout@v2" },
-        { name: "Download artifacts", uses: "actions/download-artifact@v2" },
-        { uses: "denoland/setup-deno@v1" },
+        { name: "Checkout", uses: "actions/checkout@v4" },
+        { name: "Download artifacts", uses: "actions/download-artifact@v4" },
+        { uses: "denoland/setup-deno@v2" },
         {
           name: "Move downloaded artifacts to root directory",
           run: profiles.map((profile) => {

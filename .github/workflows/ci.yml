@@ -41,6 +41,9 @@ jobs:
           - os: ubuntu-20.04
             run_tests: 'false'
             target: aarch64-unknown-linux-musl
+          - os: ubuntu-20.04
+            run_tests: 'false'
+            target: riscv64gc-unknown-linux-gnu
     outputs:
       ZIP_CHECKSUM_X86_64_APPLE_DARWIN: '${{steps.pre_release_x86_64_apple_darwin.outputs.ZIP_CHECKSUM}}'
       ZIP_CHECKSUM_AARCH64_APPLE_DARWIN: '${{steps.pre_release_aarch64_apple_darwin.outputs.ZIP_CHECKSUM}}'
@@ -49,6 +52,7 @@ jobs:
       ZIP_CHECKSUM_X86_64_UNKNOWN_LINUX_MUSL: '${{steps.pre_release_x86_64_unknown_linux_musl.outputs.ZIP_CHECKSUM}}'
       ZIP_CHECKSUM_AARCH64_UNKNOWN_LINUX_GNU: '${{steps.pre_release_aarch64_unknown_linux_gnu.outputs.ZIP_CHECKSUM}}'
       ZIP_CHECKSUM_AARCH64_UNKNOWN_LINUX_MUSL: '${{steps.pre_release_aarch64_unknown_linux_musl.outputs.ZIP_CHECKSUM}}'
+      ZIP_CHECKSUM_RISCV64GC_UNKNOWN_LINUX_GNU: '${{steps.pre_release_riscv64gc_unknown_linux_gnu.outputs.ZIP_CHECKSUM}}'
     env:
       CARGO_INCREMENTAL: 0
       RUST_BACKTRACE: full
@@ -58,7 +62,7 @@ jobs:
       - name: Cache cargo
         if: 'startsWith(github.ref, ''refs/tags/'') != true'
         uses: Swatinem/rust-cache@v2
-      - uses: denoland/setup-deno@v1
+      - uses: denoland/setup-deno@v2
       - name: Setup (Linux x86_64-musl)
         if: matrix.config.target == 'x86_64-unknown-linux-musl'
         run: |-
@@ -75,18 +79,25 @@ jobs:
         if: matrix.config.target == 'aarch64-unknown-linux-musl'
         run: |-
           sudo apt update
-          sudo apt install gcc-aarch64-linux-gnu
-          sudo apt install musl musl-dev musl-tools
+          sudo apt install gcc-aarch64-linux-gnu musl musl-dev musl-tools
           rustup target add aarch64-unknown-linux-musl
+      - name: Setup (Linux riscv64gc)
+        if: matrix.config.target == 'riscv64gc-unknown-linux-gnu'
+        run: |-
+          sudo apt update
+          sudo apt-get install gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libc6-dev-riscv64-cros
+          rustup target add riscv64gc-unknown-linux-gnu
       - name: Build (Debug)
         if: '!startsWith(github.ref, ''refs/tags/'')'
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER: riscv64-unknown-linux-gnu-gcc
         run: 'cargo build --locked --all-targets --target ${{matrix.config.target}}'
       - name: Build release
         if: 'startsWith(github.ref, ''refs/tags/'')'
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER: riscv64-unknown-linux-gnu-gcc
         run: 'cargo build --locked --all-targets --target ${{matrix.config.target}} --release'
       - name: Lint
         if: '!startsWith(github.ref, ''refs/tags/'') && matrix.config.target == ''x86_64-unknown-linux-gnu'''
@@ -145,6 +156,13 @@ jobs:
           cd target/aarch64-unknown-linux-musl/release
           zip -r dprint-plugin-exec-aarch64-unknown-linux-musl.zip dprint-plugin-exec
           echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-aarch64-unknown-linux-musl.zip | awk '{print $1}')"
+      - name: Pre-release (riscv64gc-unknown-linux-gnu)
+        id: pre_release_riscv64gc_unknown_linux_gnu
+        if: 'matrix.config.target == ''riscv64gc-unknown-linux-gnu'' && startsWith(github.ref, ''refs/tags/'')'
+        run: |-
+          cd target/riscv64gc-unknown-linux-gnu/release
+          zip -r dprint-plugin-exec-riscv64gc-unknown-linux-gnu.zip dprint-plugin-exec
+          echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 dprint-plugin-exec-riscv64gc-unknown-linux-gnu.zip | awk '{print $1}')"
       - name: Upload artifacts (x86_64-apple-darwin)
         if: 'matrix.config.target == ''x86_64-apple-darwin'' && startsWith(github.ref, ''refs/tags/'')'
         uses: actions/upload-artifact@v2
@@ -187,6 +205,12 @@ jobs:
         with:
           name: aarch64-unknown-linux-musl-artifacts
           path: target/aarch64-unknown-linux-musl/release/dprint-plugin-exec-aarch64-unknown-linux-musl.zip
+      - name: Upload artifacts (riscv64gc-unknown-linux-gnu)
+        if: 'matrix.config.target == ''riscv64gc-unknown-linux-gnu'' && startsWith(github.ref, ''refs/tags/'')'
+        uses: actions/upload-artifact@v2
+        with:
+          name: riscv64gc-unknown-linux-gnu-artifacts
+          path: target/riscv64gc-unknown-linux-gnu/release/dprint-plugin-exec-riscv64gc-unknown-linux-gnu.zip
   draft_release:
     name: draft_release
     if: 'startsWith(github.ref, ''refs/tags/'')'
@@ -194,10 +218,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Download artifacts
-        uses: actions/download-artifact@v2
-      - uses: denoland/setup-deno@v1
+        uses: actions/download-artifact@v4
+      - uses: denoland/setup-deno@v2
       - name: Move downloaded artifacts to root directory
         run: |-
           mv x86_64-apple-darwin-artifacts/dprint-plugin-exec-x86_64-apple-darwin.zip .
@@ -207,6 +231,7 @@ jobs:
           mv x86_64-unknown-linux-musl-artifacts/dprint-plugin-exec-x86_64-unknown-linux-musl.zip .
           mv aarch64-unknown-linux-gnu-artifacts/dprint-plugin-exec-aarch64-unknown-linux-gnu.zip .
           mv aarch64-unknown-linux-musl-artifacts/dprint-plugin-exec-aarch64-unknown-linux-musl.zip .
+          mv riscv64gc-unknown-linux-gnu-artifacts/dprint-plugin-exec-riscv64gc-unknown-linux-gnu.zip .
       - name: Output checksums
         run: |-
           echo "dprint-plugin-exec-x86_64-apple-darwin.zip: ${{needs.build.outputs.ZIP_CHECKSUM_X86_64_APPLE_DARWIN}}"
@@ -216,6 +241,7 @@ jobs:
           echo "dprint-plugin-exec-x86_64-unknown-linux-musl.zip: ${{needs.build.outputs.ZIP_CHECKSUM_X86_64_UNKNOWN_LINUX_MUSL}}"
           echo "dprint-plugin-exec-aarch64-unknown-linux-gnu.zip: ${{needs.build.outputs.ZIP_CHECKSUM_AARCH64_UNKNOWN_LINUX_GNU}}"
           echo "dprint-plugin-exec-aarch64-unknown-linux-musl.zip: ${{needs.build.outputs.ZIP_CHECKSUM_AARCH64_UNKNOWN_LINUX_MUSL}}"
+          echo "dprint-plugin-exec-riscv64gc-unknown-linux-gnu.zip: ${{needs.build.outputs.ZIP_CHECKSUM_RISCV64GC_UNKNOWN_LINUX_GNU}}"
       - name: Create plugin file
         run: deno run --allow-read=. --allow-write=. scripts/create_plugin_file.ts
       - name: Get tag version
@@ -239,6 +265,7 @@ jobs:
             dprint-plugin-exec-x86_64-unknown-linux-musl.zip
             dprint-plugin-exec-aarch64-unknown-linux-gnu.zip
             dprint-plugin-exec-aarch64-unknown-linux-musl.zip
+            dprint-plugin-exec-riscv64gc-unknown-linux-gnu.zip
             plugin.json
             deployment/schema.json
           body: |-

@@ -204,7 +204,7 @@ const ci = {
             name: `Upload artifacts (${profile.target})`,
             if:
               `matrix.config.target == '${profile.target}' && startsWith(github.ref, 'refs/tags/')`,
-            uses: "actions/upload-artifact@v2",
+            uses: "actions/upload-artifact@v4",
             with: {
               name: profile.artifactsName,
               path: `target/${profile.target}/release/${profile.zipFileName}`,

@@ -128,7 +128,7 @@ const ci = {
           if: "matrix.config.target == 'riscv64gc-unknown-linux-gnu'",
           run: [
             "sudo apt update",
-            "sudo apt-get install gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libc6-dev-riscv64-cros",
+            "sudo apt-get install gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libc6-dev-riscv64-cross",
             "rustup target add riscv64gc-unknown-linux-gnu",
           ].join("\n"),
         },

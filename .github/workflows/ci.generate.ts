@@ -10,6 +10,7 @@ enum OperatingSystem {
 interface ProfileData {
   os: OperatingSystem;
   target: string;
+  cross?: boolean;
   runTests?: boolean;
 }
 
@@ -40,6 +41,7 @@ const profileDataItems: ProfileData[] = [{
   target: "aarch64-unknown-linux-musl",
 }, {
   os: OperatingSystem.Linux,
+  cross: true,
   target: "riscv64gc-unknown-linux-gnu",
 }];
 const profiles = profileDataItems.map((profile) => {
@@ -72,6 +74,7 @@ const ci = {
             os: profile.os,
             run_tests: (profile.runTests ?? false).toString(),
             target: profile.target,
+            cross: (profile.cross ?? false).toString(),
           })),
         },
       },
@@ -127,32 +130,41 @@ const ci = {
           ].join("\n"),
         },
         {
-          name: "Setup (Linux riscv64gc)",
-          if: "matrix.config.target == 'riscv64gc-unknown-linux-gnu'",
+          name: "Setup cross",
+          if: "matrix.config.cross == 'true'",
           run: [
-            "sudo apt update",
-            "sudo apt-get install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libc6-dev-riscv64-cross",
-            "rustup target add riscv64gc-unknown-linux-gnu",
-            "which riscv64-unknown-linux-gnu-gcc"
+            "cargo install cross --git https://github.com/cross-rs/cross --rev 88f49ff79e777bef6d3564531636ee4d3cc2f8d2",
           ].join("\n"),
         },
         {
           name: "Build (Debug)",
-          if: "!startsWith(github.ref, 'refs/tags/')",
+          if: "matrix.config.cross != 'true' && !startsWith(github.ref, 'refs/tags/')",
           env: {
             "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc",
-            "CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER": "riscv64-unknown-linux-gnu-gcc",
           },
           run: "cargo build --locked --all-targets --target ${{matrix.config.target}}",
         },
         {
           name: "Build release",
-          if: "startsWith(github.ref, 'refs/tags/')",
+          if: "matrix.config.cross != 'true' && startsWith(github.ref, 'refs/tags/')",
           env: {
             "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc",
-            "CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER": "riscv64-unknown-linux-gnu-gcc",
           },
           run: "cargo build --locked --all-targets --target ${{matrix.config.target}} --release",
+        },
+        {
+          name: "Build cross (Debug)",
+          if: "matrix.config.cross == 'true' && !startsWith(github.ref, 'refs/tags/')",
+          run: [
+            "cross build --locked --target ${{matrix.config.target}}",
+          ].join("\n"),
+        },
+        {
+          name: "Build cross (Release)",
+          if: "matrix.config.cross == 'true' && startsWith(github.ref, 'refs/tags/')",
+          run: [
+            "cross build --locked --target ${{matrix.config.target}} --release",
+          ].join("\n"),
         },
         {
           name: "Lint",

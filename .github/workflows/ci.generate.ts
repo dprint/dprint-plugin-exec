@@ -94,6 +94,9 @@ const ci = {
           name: "Cache cargo",
           if: "startsWith(github.ref, 'refs/tags/') != true",
           uses: "Swatinem/rust-cache@v2",
+          with: {
+            key: "${{ matrix.config.target }}",
+          },
         },
         { uses: "denoland/setup-deno@v2" },
         {
@@ -128,7 +131,7 @@ const ci = {
           if: "matrix.config.target == 'riscv64gc-unknown-linux-gnu'",
           run: [
             "sudo apt update",
-            "sudo apt-get install gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libc6-dev-riscv64-cross",
+            "sudo apt-get install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libc6-dev-riscv64-cross",
             "rustup target add riscv64gc-unknown-linux-gnu",
             "which riscv64-unknown-linux-gnu-gcc"
           ].join("\n"),

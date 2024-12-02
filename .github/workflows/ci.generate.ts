@@ -130,6 +130,7 @@ const ci = {
             "sudo apt update",
             "sudo apt-get install gcc-riscv64-linux-gnu g++-riscv64-linux-gnu libc6-dev-riscv64-cross",
             "rustup target add riscv64gc-unknown-linux-gnu",
+            "which riscv64-unknown-linux-gnu-gcc"
           ].join("\n"),
         },
         {

@@ -117,7 +117,7 @@ Use the `rustfmt` binary so you can format stdin.
   "exec": {
     "cwd": "${configDir}",
     "commands": [{
-      "command": "rustfmt --edition 2021",
+      "command": "rustfmt --edition 2024",
       "exts": ["rs"]
     }]
   },

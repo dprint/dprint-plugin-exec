@@ -1,4 +1,5 @@
 use dprint_core::configuration::get_nullable_value;
+use dprint_core::configuration::get_nullable_vec;
 use dprint_core::configuration::get_unknown_property_diagnostics;
 use dprint_core::configuration::get_value;
 use dprint_core::configuration::ConfigKeyMap;
@@ -11,6 +12,8 @@ use globset::GlobMatcher;
 use handlebars::Handlebars;
 use serde::Serialize;
 use serde::Serializer;
+use sha2::{Digest, Sha256};
+use std::fs::read_to_string;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -40,6 +43,7 @@ pub struct CommandConfiguration {
   pub associations: Option<GlobMatcher>,
   pub file_extensions: Vec<String>,
   pub file_names: Vec<String>,
+  pub cache_key_files_hash: Option<String>,
 }
 
 impl CommandConfiguration {
@@ -97,7 +101,7 @@ impl Configuration {
 
     let mut resolved_config = Configuration {
       is_valid: true,
-      cache_key: get_value(&mut config, "cacheKey", "0".to_string(), &mut diagnostics),
+      cache_key: "0".to_string(),
       line_width: get_value(
         &mut config,
         "lineWidth",
@@ -126,6 +130,10 @@ impl Configuration {
       timeout: get_value(&mut config, "timeout", 30, &mut diagnostics),
     };
 
+    let root_cache_key = get_nullable_value::<String>(&mut config, "cacheKey", &mut diagnostics);
+    let root_cache_key_exists = root_cache_key.is_some();
+    let mut cache_key_file_hashes = Vec::new();
+
     let root_cwd = get_nullable_value(&mut config, "cwd", &mut diagnostics);
 
     if let Some(commands) = config.swap_remove("commands").and_then(|c| c.into_array()) {
@@ -137,12 +145,16 @@ impl Configuration {
           });
           continue;
         };
-        let result = parse_command_obj(command_obj, root_cwd.as_ref());
+        let result = parse_command_obj(command_obj, root_cwd.as_ref(), root_cache_key_exists);
         diagnostics.extend(result.1.into_iter().map(|mut diagnostic| {
           diagnostic.property_name = format!("commands[{}].{}", i, diagnostic.property_name);
           diagnostic
         }));
-        if let Some(command_config) = result.0 {
+        if let Some(mut command_config) = result.0 {
+          if let Some(cache_key_files_hash) = command_config.cache_key_files_hash.take() {
+            cache_key_file_hashes.push(cache_key_files_hash);
+          }
+
           resolved_config.commands.push(command_config);
         }
       }
@@ -154,6 +166,10 @@ impl Configuration {
     }
 
     diagnostics.extend(get_unknown_property_diagnostics(config));
+
+    if let Some(cache_key) = compute_cache_key(root_cache_key, cache_key_file_hashes) {
+      resolved_config.cache_key = cache_key;
+    }
 
     resolved_config.is_valid = diagnostics.is_empty();
 
@@ -167,6 +183,7 @@ impl Configuration {
 fn parse_command_obj(
   mut command_obj: ConfigKeyMap,
   root_cwd: Option<&String>,
+  root_cache_key_exists: bool,
 ) -> (Option<CommandConfiguration>, Vec<ConfigurationDiagnostic>) {
   let mut diagnostics = Vec::new();
   let mut command = splitty::split_unquoted_whitespace(&get_value(
@@ -200,6 +217,59 @@ fn parse_command_obj(
       handlebars.unregister_template("tmp");
     }
   }
+
+  let cwd = get_cwd(
+    get_nullable_value(&mut command_obj, "cwd", &mut diagnostics)
+      .or_else(|| root_cwd.map(ToOwned::to_owned)),
+  );
+
+  let cache_key_files = get_nullable_vec(
+    &mut command_obj,
+    "cacheKeyFiles",
+    |value, i, diagnostics| match value {
+      ConfigKeyValue::String(value) => Some(cwd.join(value)),
+      _ => {
+        diagnostics.push(ConfigurationDiagnostic {
+          property_name: format!("cacheKeyFiles[{}]", i),
+          message: "Expected string element.".to_string(),
+        });
+        None
+      }
+    },
+    &mut diagnostics,
+  );
+  if root_cache_key_exists && cache_key_files.is_some() {
+    diagnostics.push(ConfigurationDiagnostic {
+      property_name: "cacheKeyFiles".to_string(),
+      message:
+        "Cannot specify `cacheKeyFiles` on a command if `cacheKey` is specified at the top level"
+          .to_string(),
+    });
+    return (None, diagnostics);
+  }
+
+  // compute the hash separately from the config read so we don't do the disk ops if the config is invalid.
+  let cache_key_files_hash = {
+    if let Some(cache_key_files) = cache_key_files {
+      let mut hasher = Sha256::new();
+      for file in cache_key_files {
+        let contents = match read_to_string(&file) {
+          Ok(contents) => contents,
+          Err(err) => {
+            diagnostics.push(ConfigurationDiagnostic {
+              property_name: "cacheKeyFiles".to_string(),
+              message: format!("Unable to read file '{}': {}.", file.display(), err),
+            });
+            return (None, diagnostics);
+          }
+        };
+        hasher.update(contents);
+      }
+      Some(format!("{:x}", hasher.finalize()))
+    } else {
+      None
+    }
+  };
 
   let config = CommandConfiguration {
     executable: command.remove(0),
@@ -252,10 +322,7 @@ fn parse_command_obj(
         }
       })
     },
-    cwd: get_cwd(
-      get_nullable_value(&mut command_obj, "cwd", &mut diagnostics)
-        .or_else(|| root_cwd.map(ToOwned::to_owned)),
-    ),
+    cwd,
     stdin: get_value(&mut command_obj, "stdin", true, &mut diagnostics),
     file_extensions: take_string_or_string_vec(&mut command_obj, "exts", &mut diagnostics)
       .into_iter()
@@ -268,6 +335,7 @@ fn parse_command_obj(
       })
       .collect::<Vec<_>>(),
     file_names: take_string_or_string_vec(&mut command_obj, "fileNames", &mut diagnostics),
+    cache_key_files_hash,
   };
   diagnostics.extend(get_unknown_property_diagnostics(command_obj));
 
@@ -326,6 +394,25 @@ fn get_cwd(dir: Option<String>) -> PathBuf {
     Some(dir) => PathBuf::from(dir),
     None => std::env::current_dir().expect("should get cwd"),
   }
+}
+
+fn compute_cache_key(
+  root_cache_key: Option<String>,
+  cache_key_file_hashes: Vec<String>,
+) -> Option<String> {
+  if let Some(cache_key) = root_cache_key {
+    return Some(cache_key);
+  }
+
+  if cache_key_file_hashes.is_empty() {
+    return None;
+  }
+
+  let mut hasher = Sha256::new();
+  for file_hash in cache_key_file_hashes {
+    hasher.update(file_hash);
+  }
+  Some(format!("{:x}", hasher.finalize()))
 }
 
 #[cfg(test)]

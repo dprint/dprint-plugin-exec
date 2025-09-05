@@ -119,7 +119,7 @@ Use the `rustfmt` binary so you can format stdin.
   "exec": {
     "cwd": "${configDir}",
     "commands": [{
-      "command": "rustfmt --edition 2021",
+      "command": "rustfmt --edition 2024",
       "exts": ["rs"],
       // add the config files for automatic cache invalidation when the rust version or rustfmt config changes
       "cacheKeyFiles": [

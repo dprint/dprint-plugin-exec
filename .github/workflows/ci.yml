@@ -66,6 +66,10 @@ jobs:
       RUST_BACKTRACE: full
     steps:
       - uses: actions/checkout@v4
+        with:
+          config: |-
+            core.autocrlf=false
+            core.eol=lf
       - uses: dsherret/rust-toolchain-file@v1
       - name: Cache cargo
         if: 'startsWith(github.ref, ''refs/tags/'') != true'

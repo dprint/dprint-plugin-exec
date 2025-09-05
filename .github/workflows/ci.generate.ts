@@ -91,7 +91,15 @@ const ci = {
         RUST_BACKTRACE: "full",
       },
       steps: [
-        { uses: "actions/checkout@v4" },
+        {
+          uses: "actions/checkout@v4",
+          with: {
+            config: [
+              "core.autocrlf=false",
+              "core.eol=lf",
+            ].join("\n"),
+          },
+        },
         { uses: "dsherret/rust-toolchain-file@v1" },
         {
           name: "Cache cargo",

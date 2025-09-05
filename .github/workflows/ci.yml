@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         config:
-          - os: macos-12
+          - os: macos-13
             run_tests: 'true'
             target: x86_64-apple-darwin
             cross: 'false'
@@ -32,23 +32,23 @@ jobs:
             run_tests: 'true'
             target: x86_64-pc-windows-msvc
             cross: 'false'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             run_tests: 'true'
             target: x86_64-unknown-linux-gnu
             cross: 'false'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             run_tests: 'false'
             target: x86_64-unknown-linux-musl
             cross: 'false'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             run_tests: 'false'
             target: aarch64-unknown-linux-gnu
             cross: 'false'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             run_tests: 'false'
             target: aarch64-unknown-linux-musl
             cross: 'false'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             run_tests: 'false'
             target: riscv64gc-unknown-linux-gnu
             cross: 'true'

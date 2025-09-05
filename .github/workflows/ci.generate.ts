@@ -92,14 +92,13 @@ const ci = {
       },
       steps: [
         {
-          uses: "actions/checkout@v4",
-          with: {
-            config: [
-              "core.autocrlf=false",
-              "core.eol=lf",
-            ].join("\n"),
-          },
+          name: "Prepare git",
+          run: [
+            "git config --global core.autocrlf false",
+            "git config --global core.eol lf",
+          ].join("\n"),
         },
+        { uses: "actions/checkout@v4" },
         { uses: "dsherret/rust-toolchain-file@v1" },
         {
           name: "Cache cargo",

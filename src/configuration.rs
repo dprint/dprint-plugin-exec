@@ -12,7 +12,8 @@ use globset::GlobMatcher;
 use handlebars::Handlebars;
 use serde::Serialize;
 use serde::Serializer;
-use sha2::{Digest, Sha256};
+use sha2::Digest;
+use sha2::Sha256;
 use std::fs::read_to_string;
 use std::path::Path;
 use std::path::PathBuf;
@@ -567,5 +568,159 @@ mod tests {
 
   fn parse_config(value: serde_json::Value) -> ConfigKeyMap {
     serde_json::from_value(value).unwrap()
+  }
+
+  mod cache_key {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn default_cache_key() {
+      let unresolved_config = parse_config(json!({
+        "commands": [{
+          "exts": ["txt"],
+          "command": "1"
+        }],
+      }));
+      let result = Configuration::resolve(unresolved_config, &Default::default());
+      let config = result.config;
+      assert!(result.diagnostics.is_empty());
+      assert_eq!(config.cache_key, "0");
+    }
+
+    #[test]
+    fn top_level_cache_key() {
+      let unresolved_config = parse_config(json!({
+        "cacheKey": "99",
+        "commands": [{
+          "exts": ["txt"],
+          "command": "1"
+        }],
+      }));
+      let result = Configuration::resolve(unresolved_config, &Default::default());
+      assert!(result.diagnostics.is_empty());
+      let config = result.config;
+      assert_eq!(config.cache_key, "99");
+    }
+
+    #[test]
+    fn top_level_cache_key_plus_command_cache_key_is_disallowed() {
+      let unresolved_config = parse_config(json!({
+        "cacheKey": "99",
+        "commands": [{
+          "exts": ["txt"],
+          "command": "1",
+          "cacheKeyFiles": ["foo"]
+        }],
+      }));
+      let result = Configuration::resolve(unresolved_config, &Default::default());
+      assert!(!result.diagnostics.is_empty());
+      assert!(!result.config.is_valid);
+      assert_eq!(result.diagnostics, vec![
+        ConfigurationDiagnostic {
+          property_name: "commands[0].cacheKeyFiles".to_string(),
+          message:
+            "Cannot specify `cacheKeyFiles` on a command if `cacheKey` is specified at the top level"
+              .to_string(),
+        }
+      ]);
+    }
+
+    #[test]
+    fn command_cache_key_fails_if_file_does_not_exist() {
+      let unresolved_config = parse_config(json!({
+        "commands": [{
+          "exts": ["txt"],
+          "command": "1",
+          "cacheKeyFiles": ["path/to/missing/file"]
+        }],
+      }));
+      let result = Configuration::resolve(unresolved_config, &Default::default());
+      assert!(!result.config.is_valid);
+      assert_eq!(result.diagnostics.len(), 1);
+      assert_eq!(
+        result.diagnostics[0].property_name,
+        "commands[0].cacheKeyFiles"
+      );
+      let cwd = std::env::current_dir().unwrap().display().to_string();
+      assert_eq!(
+        result.diagnostics[0]
+          .message
+          .replace(&format!("{}/", cwd), ""),
+        "Unable to read file 'path/to/missing/file': No such file or directory (os error 2)."
+      );
+    }
+
+    #[test]
+    fn command_cache_key_one_command_one_file() {
+      let unresolved_config = parse_config(json!({
+        "commands": [{
+          "exts": ["txt"],
+          "command": "1",
+          "cacheKeyFiles": [
+            "./tests/resources/one-line.txt"
+          ]
+        }],
+      }));
+      let result = Configuration::resolve(unresolved_config, &Default::default());
+      assert!(result.diagnostics.is_empty());
+      let config = result.config;
+      assert_eq!(
+        config.cache_key,
+        "c7b3af761ad02238e72bf5a60c94be2f41eec6637ec3ec1bfa853a3a1fb91225"
+      );
+    }
+
+    #[test]
+    fn command_cache_key_one_command_multiple_files() {
+      let unresolved_config = parse_config(json!({
+        "commands": [{
+          "exts": ["txt"],
+          "command": "1",
+          "cacheKeyFiles": [
+            "./tests/resources/one-line.txt",
+            "./tests/resources/multi-line.txt",
+          ]
+        }],
+      }));
+      let result = Configuration::resolve(unresolved_config, &Default::default());
+      assert!(result.diagnostics.is_empty());
+      let config = result.config;
+      assert_eq!(
+        config.cache_key,
+        "4321f2e747210582553e6ad8ef5b866d87c357a039cd09cdbdab6ebe33517c1a"
+      );
+    }
+
+    #[test]
+    fn command_cache_key_multiple_commands() {
+      let unresolved_config = parse_config(json!({
+        "commands": [
+          {
+            "exts": ["txt"],
+            "command": "1",
+            "cacheKeyFiles": [
+              "./tests/resources/one-line.txt",
+              "./tests/resources/multi-line.txt",
+            ]
+          },
+          {
+            "exts": ["txt"],
+            "command": "2",
+            "cacheKeyFiles": [
+              "./tests/resources/one-line.txt",
+              "./tests/resources/multi-line.txt",
+            ]
+          },
+        ],
+      }));
+      let result = Configuration::resolve(unresolved_config, &Default::default());
+      assert!(result.diagnostics.is_empty());
+      let config = result.config;
+      assert_eq!(
+        config.cache_key,
+        "51eaf161463bb6ba4957327330e27a80d039b7d2c0c27590ebdf844e7eca954a"
+      );
+    }
   }
 }

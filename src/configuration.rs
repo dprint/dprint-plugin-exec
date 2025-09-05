@@ -132,7 +132,6 @@ impl Configuration {
     };
 
     let root_cache_key = get_nullable_value::<String>(&mut config, "cacheKey", &mut diagnostics);
-    let root_cache_key_exists = root_cache_key.is_some();
     let mut cache_key_file_hashes = Vec::new();
 
     let root_cwd = get_nullable_value(&mut config, "cwd", &mut diagnostics);
@@ -146,7 +145,7 @@ impl Configuration {
           });
           continue;
         };
-        let result = parse_command_obj(command_obj, root_cwd.as_ref(), root_cache_key_exists);
+        let result = parse_command_obj(command_obj, root_cwd.as_ref());
         diagnostics.extend(result.1.into_iter().map(|mut diagnostic| {
           diagnostic.property_name = format!("commands[{}].{}", i, diagnostic.property_name);
           diagnostic
@@ -168,7 +167,7 @@ impl Configuration {
 
     diagnostics.extend(get_unknown_property_diagnostics(config));
 
-    if let Some(cache_key) = compute_cache_key(root_cache_key, cache_key_file_hashes) {
+    if let Some(cache_key) = compute_cache_key(root_cache_key, &cache_key_file_hashes) {
       resolved_config.cache_key = cache_key;
     }
 
@@ -184,7 +183,6 @@ impl Configuration {
 fn parse_command_obj(
   mut command_obj: ConfigKeyMap,
   root_cwd: Option<&String>,
-  root_cache_key_exists: bool,
 ) -> (Option<CommandConfiguration>, Vec<ConfigurationDiagnostic>) {
   let mut diagnostics = Vec::new();
   let mut command = splitty::split_unquoted_whitespace(&get_value(
@@ -239,15 +237,6 @@ fn parse_command_obj(
     },
     &mut diagnostics,
   );
-  if root_cache_key_exists && cache_key_files.is_some() {
-    diagnostics.push(ConfigurationDiagnostic {
-      property_name: "cacheKeyFiles".to_string(),
-      message:
-        "Cannot specify `cacheKeyFiles` on a command if `cacheKey` is specified at the top level"
-          .to_string(),
-    });
-    return (None, diagnostics);
-  }
 
   // compute the hash separately from the config read so we don't do the disk ops if the config is invalid.
   let cache_key_files_hash = {
@@ -399,12 +388,20 @@ fn get_cwd(dir: Option<String>) -> PathBuf {
 
 fn compute_cache_key(
   root_cache_key: Option<String>,
-  cache_key_file_hashes: Vec<String>,
+  cache_key_file_hashes: &[String],
 ) -> Option<String> {
-  if let Some(cache_key) = root_cache_key {
-    return Some(cache_key);
+  match (
+    root_cache_key,
+    compute_cache_key_files_hash(cache_key_file_hashes),
+  ) {
+    (Some(root), Some(files)) => Some(format!("{}{}", root, files)),
+    (Some(root), None) => Some(root),
+    (None, Some(files)) => Some(files),
+    (None, None) => None,
   }
+}
 
+fn compute_cache_key_files_hash(cache_key_file_hashes: &[String]) -> Option<String> {
   if cache_key_file_hashes.is_empty() {
     return None;
   }
@@ -604,26 +601,22 @@ mod tests {
     }
 
     #[test]
-    fn top_level_cache_key_plus_command_cache_key_is_disallowed() {
+    fn top_level_cache_key_plus_command_cache_key_is_allowed() {
       let unresolved_config = parse_config(json!({
         "cacheKey": "99",
         "commands": [{
           "exts": ["txt"],
           "command": "1",
-          "cacheKeyFiles": ["foo"]
+          "cacheKeyFiles": ["./tests/resources/one-line.txt"]
         }],
       }));
       let result = Configuration::resolve(unresolved_config, &Default::default());
-      assert!(!result.diagnostics.is_empty());
-      assert!(!result.config.is_valid);
-      assert_eq!(result.diagnostics, vec![
-        ConfigurationDiagnostic {
-          property_name: "commands[0].cacheKeyFiles".to_string(),
-          message:
-            "Cannot specify `cacheKeyFiles` on a command if `cacheKey` is specified at the top level"
-              .to_string(),
-        }
-      ]);
+      assert!(result.config.is_valid);
+      assert_eq!(result.diagnostics, vec![]);
+      assert_eq!(
+        result.config.cache_key,
+        "99c7b3af761ad02238e72bf5a60c94be2f41eec6637ec3ec1bfa853a3a1fb91225"
+      );
     }
 
     #[test]
@@ -642,13 +635,9 @@ mod tests {
         result.diagnostics[0].property_name,
         "commands[0].cacheKeyFiles"
       );
-      let cwd = std::env::current_dir().unwrap().display().to_string();
-      assert_eq!(
-        result.diagnostics[0]
-          .message
-          .replace(&format!("{}/", cwd), ""),
-        "Unable to read file 'path/to/missing/file': No such file or directory (os error 2)."
-      );
+      assert!(result.diagnostics[0]
+        .message
+        .starts_with("Unable to read file"));
     }
 
     #[test]

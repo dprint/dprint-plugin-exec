@@ -50,7 +50,6 @@ General config:
 
 - `cacheKey` - Optional value used to bust dprint's incremental cache (ex. provide `"1"`). This is useful if you want to force formatting to occur because the underlying command's code has changed.
   - If you want to automatically calculate the cache key, consider using `command.cacheKeyFiles`.
-    Note that you cannot use both `cacheKey` and `command.cacheKeyFiles` together.
 - `timeout` - Number of seconds to allow an executable format to occur before a timeout error occurs (default: `30`).
 - `cwd` - Recommend setting this to `${configDir}` to force it to use the cwd of the current config file.
 

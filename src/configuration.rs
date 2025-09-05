@@ -1,13 +1,13 @@
-use dprint_core::configuration::get_nullable_value;
-use dprint_core::configuration::get_nullable_vec;
-use dprint_core::configuration::get_unknown_property_diagnostics;
-use dprint_core::configuration::get_value;
 use dprint_core::configuration::ConfigKeyMap;
 use dprint_core::configuration::ConfigKeyValue;
 use dprint_core::configuration::ConfigurationDiagnostic;
 use dprint_core::configuration::GlobalConfiguration;
-use dprint_core::configuration::ResolveConfigurationResult;
 use dprint_core::configuration::RECOMMENDED_GLOBAL_CONFIGURATION;
+use dprint_core::configuration::ResolveConfigurationResult;
+use dprint_core::configuration::get_nullable_value;
+use dprint_core::configuration::get_nullable_vec;
+use dprint_core::configuration::get_unknown_property_diagnostics;
+use dprint_core::configuration::get_value;
 use globset::GlobMatcher;
 use handlebars::Handlebars;
 use serde::Serialize;
@@ -416,8 +416,8 @@ fn compute_cache_key_files_hash(cache_key_file_hashes: &[String]) -> Option<Stri
 #[cfg(test)]
 mod tests {
   use super::*;
-  use dprint_core::configuration::resolve_global_config;
   use dprint_core::configuration::ConfigKeyValue;
+  use dprint_core::configuration::resolve_global_config;
   use pretty_assertions::assert_eq;
   use serde_json::json;
 
@@ -635,9 +635,11 @@ mod tests {
         result.diagnostics[0].property_name,
         "commands[0].cacheKeyFiles"
       );
-      assert!(result.diagnostics[0]
-        .message
-        .starts_with("Unable to read file"));
+      assert!(
+        result.diagnostics[0]
+          .message
+          .starts_with("Unable to read file")
+      );
     }
 
     #[test]

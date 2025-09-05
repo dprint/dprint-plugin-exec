@@ -49,6 +49,8 @@ This plugin executes CLI commands to format code via stdin (recommended) or via 
 General config:
 
 - `cacheKey` - Optional value used to bust dprint's incremental cache (ex. provide `"1"`). This is useful if you want to force formatting to occur because the underlying command's code has changed.
+  - If you want to automatically calculate the cache key, consider using `command.cacheKeyFiles`.
+    Note that you cannot use both `cacheKey` and `command.cacheKeyFiles` together.
 - `timeout` - Number of seconds to allow an executable format to occur before a timeout error occurs (default: `30`).
 - `cwd` - Recommend setting this to `${configDir}` to force it to use the cwd of the current config file.
 
@@ -61,6 +63,7 @@ Command config:
   - You may have associations match multiple binaries in order to format a file with multiple binaries instead of just one. The order in the config file will dictate the order the formatting occurs in.
 - `stdin` - If the text should be provided via stdin (default: `true`)
 - `cwd` - Current working directory to use when launching this command (default: dprint's cwd or the root `cwd` setting if set)
+- `cacheKeyFiles` - A list of paths (relative to `cwd`) to files used to automatically compute a `cacheKey`. This allows automatic invalidation of dprint's incremental cache when any of these files are changed.
 
 Command templates (ex. see the prettier example above):
 
@@ -118,7 +121,12 @@ Use the `rustfmt` binary so you can format stdin.
     "cwd": "${configDir}",
     "commands": [{
       "command": "rustfmt --edition 2021",
-      "exts": ["rs"]
+      "exts": ["rs"],
+      // add the config files for automatic cache invalidation when the rust version or rustfmt config changes
+      "cacheKeyFiles": [
+        "rustfmt.toml",
+        "rust-toolchain.toml"
+      ]
     }]
   },
   "plugins": [
@@ -139,7 +147,11 @@ Consider using [dprint-plugin-prettier](https://dprint.dev/plugins/prettier/) in
     "commands": [{
       "command": "prettier --stdin-filepath {{file_path}} --tab-width {{indent_width}} --print-width {{line_width}}",
       // add more extensions that prettier should format
-      "exts": ["js", "ts", "html"]
+      "exts": ["js", "ts", "html"],
+      // add the config files for automatic cache invalidation when the prettier config config changes
+      "cacheKeyFiles": [
+        ".prettierrc.json"
+      ]
     }]
   },
   "plugins": [

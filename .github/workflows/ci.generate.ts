@@ -278,6 +278,11 @@ const ci = {
             "sed -i 's/exec\\/0.0.0/exec\\/${{ steps.get_tag_version.outputs.TAG_VERSION }}/' deployment/schema.json",
         },
         {
+          name: "Create release notes",
+          run:
+            "deno run -A ./scripts/generate_release_notes.ts ${{ steps.get_tag_version.outputs.TAG_VERSION }} ${{ steps.get_plugin_file_checksum.outputs.CHECKSUM }} > ${{ github.workspace }}-CHANGELOG.txt",
+        },
+        {
           name: "Release",
           uses: "softprops/action-gh-release@v1",
           env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" },
@@ -287,25 +292,7 @@ const ci = {
               "plugin.json",
               "deployment/schema.json",
             ].join("\n"),
-            body: `## Install
-
-Dependencies:
-
-- Install dprint's CLI >= 0.40.0
-
-In a dprint configuration file:
-
-1. Specify the plugin url and checksum in the \`"plugins"\` array or run \`dprint config add exec\`:
-   \`\`\`jsonc
-   {
-     // etc...
-     "plugins": [
-       "https://plugins.dprint.dev/exec-\${{ steps.get_tag_version.outputs.TAG_VERSION }}.json@\${{ steps.get_plugin_file_checksum.outputs.CHECKSUM }}"
-     ]
-   }
-   \`\`\`
-2. Follow the configuration setup instructions found at https://github.com/dprint/dprint-plugin-exec#configuration`,
-            draft: false,
+            "body_path": "${{ github.workspace }}-CHANGELOG.txt",
           },
         },
       ],

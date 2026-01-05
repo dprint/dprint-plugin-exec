@@ -7,7 +7,8 @@ This plugin executes CLI commands to format code via stdin (recommended) or via 
 ## Install
 
 1. Install [dprint](https://dprint.dev/install/)
-2. Follow instructions at https://github.com/dprint/dprint-plugin-exec/releases/
+2. `dprint init`
+3. `dprint config add exec`
 
 ## Configuration
 

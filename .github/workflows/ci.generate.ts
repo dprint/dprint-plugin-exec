@@ -1,7 +1,7 @@
 import * as yaml from "https://deno.land/std@0.170.0/encoding/yaml.ts";
 
 enum OperatingSystem {
-  Macx86 = "macos-13",
+  Macx86 = "macos-15-intel",
   MacArm = "macos-latest",
   Windows = "windows-latest",
   Linux = "ubuntu-22.04",
@@ -98,7 +98,7 @@ const ci = {
             "git config --global core.eol lf",
           ].join("\n"),
         },
-        { uses: "actions/checkout@v4" },
+        { uses: "actions/checkout@v6" },
         { uses: "dsherret/rust-toolchain-file@v1" },
         {
           name: "Cache cargo",

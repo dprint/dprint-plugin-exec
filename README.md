@@ -32,18 +32,18 @@ This plugin executes CLI commands to format code via stdin (recommended) or via 
     // now define your commands, for example...
     "commands": [{
       "command": "rustfmt",
-      "exts": ["rs"]
+      "exts": ["rs"],
     }, {
       "command": "java -jar formatter.jar {{file_path}}",
-      "exts": ["java"]
+      "exts": ["java"],
     }, {
       "command": "yapf",
-      "exts": ["py"]
-    }]
+      "exts": ["py"],
+    }],
   },
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
-  ]
+  ],
 }
 ```
 
@@ -83,12 +83,12 @@ Command templates (ex. see the prettier example above):
     "cwd": "${configDir}",
     "commands": [{
       "command": "yapf",
-      "exts": ["py"]
-    }]
+      "exts": ["py"],
+    }],
   },
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
-  ]
+  ],
 }
 ```
 
@@ -101,12 +101,12 @@ Command templates (ex. see the prettier example above):
     "cwd": "${configDir}",
     "commands": [{
       "command": "java -jar formatter.jar {{file_path}}",
-      "exts": ["java"]
-    }]
+      "exts": ["java"],
+    }],
   },
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
-  ]
+  ],
 }
 ```
 
@@ -125,13 +125,13 @@ Use the `rustfmt` binary so you can format stdin.
       // add the config files for automatic cache invalidation when the rust version or rustfmt config changes
       "cacheKeyFiles": [
         "rustfmt.toml",
-        "rust-toolchain.toml"
-      ]
-    }]
+        "rust-toolchain.toml",
+      ],
+    }],
   },
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
-  ]
+  ],
 }
 ```
 
@@ -150,12 +150,12 @@ Consider using [dprint-plugin-prettier](https://dprint.dev/plugins/prettier/) in
       "exts": ["js", "ts", "html"],
       // add the config files for automatic cache invalidation when the prettier config config changes
       "cacheKeyFiles": [
-        ".prettierrc.json"
-      ]
-    }]
+        ".prettierrc.json",
+      ],
+    }],
   },
   "plugins": [
     // run `dprint config add exec` to add the latest exec plugin's url here
-  ]
+  ],
 }
 ```

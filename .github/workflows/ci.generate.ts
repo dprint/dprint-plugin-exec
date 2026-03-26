@@ -98,7 +98,7 @@ const ci = {
             "git config --global core.eol lf",
           ].join("\n"),
         },
-        { uses: "actions/checkout@v4" },
+        { uses: "actions/checkout@v6" },
         { uses: "dsherret/rust-toolchain-file@v1" },
         {
           name: "Cache cargo",

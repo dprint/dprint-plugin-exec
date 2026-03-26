@@ -270,7 +270,7 @@ jobs:
       - name: Create release notes
         run: 'deno run -A ./scripts/generate_release_notes.ts ${{ steps.get_tag_version.outputs.TAG_VERSION }} ${{ steps.get_plugin_file_checksum.outputs.CHECKSUM }} > ${{ github.workspace }}-CHANGELOG.txt'
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2.6.1
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         with:

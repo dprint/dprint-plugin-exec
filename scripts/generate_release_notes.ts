@@ -14,10 +14,11 @@ ${changelog}
 Dependencies:
 
 - Install dprint's CLI >= 0.40.0
+- Run \`dprint init\` to create a config file.
 
-In a dprint configuration file:
+Then:
 
-1. Specify the plugin url and checksum in the \`"plugins"\` array or run \`dprint config add exec\`:
+1. Run \`dprint add exec\`, which will update the config file as follows:
     \`\`\`jsonc
     {
       // etc...

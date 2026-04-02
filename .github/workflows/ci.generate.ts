@@ -43,6 +43,10 @@ const profileDataItems: ProfileData[] = [{
   os: OperatingSystem.Linux,
   cross: true,
   target: "riscv64gc-unknown-linux-gnu",
+}, {
+  os: OperatingSystem.Linux,
+  cross: true,
+  target: "loongarch64-unknown-linux-gnu",
 }];
 const profiles = profileDataItems.map((profile) => {
   return {
@@ -140,7 +144,7 @@ const ci = {
           name: "Setup cross",
           if: "matrix.config.cross == 'true'",
           run: [
-            "cargo install cross --git https://github.com/cross-rs/cross --rev 88f49ff79e777bef6d3564531636ee4d3cc2f8d2",
+            "cargo install cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3",
           ].join("\n"),
         },
         {

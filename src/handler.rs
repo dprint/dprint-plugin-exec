@@ -10,12 +10,12 @@ use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::anyhow;
-use anyhow::bail;
 use anyhow::Error;
 use anyhow::Result;
-use dprint_core::async_runtime::async_trait;
+use anyhow::anyhow;
+use anyhow::bail;
 use dprint_core::async_runtime::LocalBoxFuture;
+use dprint_core::async_runtime::async_trait;
 use dprint_core::configuration::ConfigKeyMap;
 use dprint_core::configuration::GlobalConfiguration;
 use dprint_core::plugins::AsyncPluginHandler;
@@ -156,11 +156,7 @@ pub async fn format_bytes(
       end -= 1;
     }
 
-    if end < start {
-      0
-    } else {
-      end - start
-    }
+    if end < start { 0 } else { end - start }
   }
 
   let mut file_bytes: Cow<Vec<u8>> = Cow::Borrowed(&original_file_bytes);

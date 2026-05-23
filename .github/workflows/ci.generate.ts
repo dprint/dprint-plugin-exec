@@ -1,10 +1,10 @@
 import * as yaml from "https://deno.land/std@0.170.0/encoding/yaml.ts";
 
 enum OperatingSystem {
-  Macx86 = "macos-12",
+  Macx86 = "macos-15-intel",
   MacArm = "macos-latest",
   Windows = "windows-latest",
-  Linux = "ubuntu-20.04",
+  Linux = "ubuntu-22.04",
 }
 
 interface ProfileData {
@@ -95,7 +95,14 @@ const ci = {
         RUST_BACKTRACE: "full",
       },
       steps: [
-        { uses: "actions/checkout@v4" },
+        {
+          name: "Prepare git",
+          run: [
+            "git config --global core.autocrlf false",
+            "git config --global core.eol lf",
+          ].join("\n"),
+        },
+        { uses: "actions/checkout@v6" },
         { uses: "dsherret/rust-toolchain-file@v1" },
         {
           name: "Cache cargo",
@@ -275,8 +282,13 @@ const ci = {
             "sed -i 's/exec\\/0.0.0/exec\\/${{ steps.get_tag_version.outputs.TAG_VERSION }}/' deployment/schema.json",
         },
         {
+          name: "Create release notes",
+          run:
+            "deno run -A ./scripts/generate_release_notes.ts ${{ steps.get_tag_version.outputs.TAG_VERSION }} ${{ steps.get_plugin_file_checksum.outputs.CHECKSUM }} > ${{ github.workspace }}-CHANGELOG.txt",
+        },
+        {
           name: "Release",
-          uses: "softprops/action-gh-release@v1",
+          uses: "softprops/action-gh-release@v2.6.1",
           env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" },
           with: {
             files: [
@@ -284,25 +296,7 @@ const ci = {
               "plugin.json",
               "deployment/schema.json",
             ].join("\n"),
-            body: `## Install
-
-Dependencies:
-
-- Install dprint's CLI >= 0.40.0
-
-In a dprint configuration file:
-
-1. Specify the plugin url and checksum in the \`"plugins"\` array or run \`dprint config add exec\`:
-   \`\`\`jsonc
-   {
-     // etc...
-     "plugins": [
-       "https://plugins.dprint.dev/exec-\${{ steps.get_tag_version.outputs.TAG_VERSION }}.json@\${{ steps.get_plugin_file_checksum.outputs.CHECKSUM }}"
-     ]
-   }
-   \`\`\`
-2. Follow the configuration setup instructions found at https://github.com/dprint/dprint-plugin-exec#configuration`,
-            draft: false,
+            "body_path": "${{ github.workspace }}-CHANGELOG.txt",
           },
         },
       ],

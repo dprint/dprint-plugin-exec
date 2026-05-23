@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         config:
-          - os: macos-12
+          - os: macos-15-intel
             run_tests: 'true'
             target: x86_64-apple-darwin
             cross: 'false'
@@ -32,23 +32,23 @@ jobs:
             run_tests: 'true'
             target: x86_64-pc-windows-msvc
             cross: 'false'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             run_tests: 'true'
             target: x86_64-unknown-linux-gnu
             cross: 'false'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             run_tests: 'false'
             target: x86_64-unknown-linux-musl
             cross: 'false'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             run_tests: 'false'
             target: aarch64-unknown-linux-gnu
             cross: 'false'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             run_tests: 'false'
             target: aarch64-unknown-linux-musl
             cross: 'false'
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             run_tests: 'false'
             target: riscv64gc-unknown-linux-gnu
             cross: 'true'
@@ -70,7 +70,11 @@ jobs:
       CARGO_INCREMENTAL: 0
       RUST_BACKTRACE: full
     steps:
-      - uses: actions/checkout@v4
+      - name: Prepare git
+        run: |-
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+      - uses: actions/checkout@v6
       - uses: dsherret/rust-toolchain-file@v1
       - name: Cache cargo
         if: 'startsWith(github.ref, ''refs/tags/'') != true'
@@ -283,8 +287,10 @@ jobs:
         run: 'echo "::set-output name=CHECKSUM::$(shasum -a 256 plugin.json | awk ''{print $1}'')"'
       - name: Update Config Schema Version
         run: 'sed -i ''s/exec\/0.0.0/exec\/${{ steps.get_tag_version.outputs.TAG_VERSION }}/'' deployment/schema.json'
+      - name: Create release notes
+        run: 'deno run -A ./scripts/generate_release_notes.ts ${{ steps.get_tag_version.outputs.TAG_VERSION }} ${{ steps.get_plugin_file_checksum.outputs.CHECKSUM }} > ${{ github.workspace }}-CHANGELOG.txt'
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2.6.1
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         with:
@@ -300,23 +306,4 @@ jobs:
             dprint-plugin-exec-loongarch64-unknown-linux-gnu.zip
             plugin.json
             deployment/schema.json
-          body: |-
-            ## Install
-
-            Dependencies:
-
-            - Install dprint's CLI >= 0.40.0
-
-            In a dprint configuration file:
-
-            1. Specify the plugin url and checksum in the `"plugins"` array or run `dprint config add exec`:
-               ```jsonc
-               {
-                 // etc...
-                 "plugins": [
-                   "https://plugins.dprint.dev/exec-${{ steps.get_tag_version.outputs.TAG_VERSION }}.json@${{ steps.get_plugin_file_checksum.outputs.CHECKSUM }}"
-                 ]
-               }
-               ```
-            2. Follow the configuration setup instructions found at https://github.com/dprint/dprint-plugin-exec#configuration
-          draft: false
+          body_path: '${{ github.workspace }}-CHANGELOG.txt'

@@ -1,8 +1,4 @@
-import {
-  $,
-  CargoToml,
-  processPlugin,
-} from "https://raw.githubusercontent.com/dprint/automation/0.10.0/mod.ts";
+import { $, CargoToml, processPlugin } from "jsr:@dprint/automation@0.10.3";
 
 const currentDirPath = $.path(import.meta.dirname!);
 const cargoFilePath = currentDirPath.join("../Cargo.toml");

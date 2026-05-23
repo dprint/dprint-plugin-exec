@@ -205,8 +205,8 @@ const buildJob = job("build", {
       name: "Lint workflow generation",
       if: isNotTag.and(target.equals("x86_64-unknown-linux-gnu")),
       run: [
-        "deno run -A .github/workflows/ci.ts --lint",
-        "deno run -A .github/workflows/release.ts --lint",
+        "./.github/workflows/ci.ts --lint",
+        "./.github/workflows/release.ts --lint",
       ],
     },
     {

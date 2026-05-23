@@ -283,6 +283,12 @@ const draftReleaseJob = job("draft_release", {
         `sed -i 's/exec\\/0.0.0/exec\\/${getTagVersion.outputs.TAG_VERSION}/' deployment/schema.json`,
     },
     {
+      // must run before "Create release notes" — the notes embed the main
+      // npm tarball's sha256 from npm-dist/publish-manifest.json.
+      name: "Build npm packages",
+      run: "deno run -A scripts/create_npm_packages.ts",
+    },
+    {
       name: "Create release notes",
       run:
         `deno run -A ./scripts/generate_release_notes.ts ${getTagVersion.outputs.TAG_VERSION} ${getPluginFileChecksum.outputs.CHECKSUM} > \${{ github.workspace }}-CHANGELOG.txt`,
@@ -299,10 +305,6 @@ const draftReleaseJob = job("draft_release", {
         ].join("\n"),
         body_path: "${{ github.workspace }}-CHANGELOG.txt",
       },
-    },
-    {
-      name: "Build npm packages",
-      run: "deno run -A scripts/create_npm_packages.ts",
     },
     {
       name: "Publish npm packages",

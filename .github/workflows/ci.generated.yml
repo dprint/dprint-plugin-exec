@@ -300,6 +300,8 @@ jobs:
         run: 'echo "::set-output name=CHECKSUM::$(shasum -a 256 plugin.json | awk ''{print $1}'')"'
       - name: Update Config Schema Version
         run: 'sed -i ''s/exec\/0.0.0/exec\/${{ steps.get_tag_version.outputs.TAG_VERSION }}/'' deployment/schema.json'
+      - name: Build npm packages
+        run: deno run -A scripts/create_npm_packages.ts
       - name: Create release notes
         run: 'deno run -A ./scripts/generate_release_notes.ts ${{ steps.get_tag_version.outputs.TAG_VERSION }} ${{ steps.get_plugin_file_checksum.outputs.CHECKSUM }} > ${{ github.workspace }}-CHANGELOG.txt'
       - name: Release
@@ -320,9 +322,5 @@ jobs:
             plugin.json
             deployment/schema.json
           body_path: '${{ github.workspace }}-CHANGELOG.txt'
-      - name: Build npm packages
-        run: deno run -A scripts/create_npm_packages.ts
-      - name: Upgrade npm
-        run: npm install --global npm@latest
       - name: Publish npm packages
         run: deno run -A scripts/publish_npm_packages.ts

@@ -1,26 +1,18 @@
-import $, { type Path } from "jsr:@david/dax@^0.47.0";
+import $ from "jsr:@david/dax@^0.47.0";
 
-const npmDistDir = $.path(import.meta.dirname!).join("../npm-dist");
+const manifestPath = $.path(import.meta.dirname!).join("../npm-dist/publish-manifest.json");
+const manifest = JSON.parse(await manifestPath.readText()) as {
+  subPackageTarballs: string[];
+  mainPackageTarball: string;
+};
 
-const subPackages: Path[] = [];
-let mainPackage: Path | undefined;
-
-for await (const entry of npmDistDir.readDir()) {
-  if (!entry.isDirectory) continue;
-  if (entry.path.join("plugin.zip").existsSync()) {
-    subPackages.push(entry.path);
-  } else if (entry.path.join("plugin.json").existsSync()) {
-    mainPackage = entry.path;
-  }
+// publish the per-platform sub-package tarballs first so the main package's
+// `optionalDependencies` resolve. Publishing the tarballs directly (rather
+// than the directories) guarantees npm uploads the exact bytes whose
+// sha256 dprint will verify against the checksum in plugin.json.
+for (const tgz of manifest.subPackageTarballs) {
+  $.logStep("Publishing sub-package tarball", tgz);
+  await $`npm publish --access public --provenance ${tgz}`;
 }
-
-// sub-packages contain plugin.zip and must publish first;
-// the main package contains plugin.json and references them.
-for (const dir of subPackages) {
-  $.logStep("Publishing sub-package", dir.toString());
-  await $`npm publish --access public --provenance`.cwd(dir);
-}
-if (mainPackage != null) {
-  $.logStep("Publishing main package", mainPackage.toString());
-  await $`npm publish --access public --provenance`.cwd(mainPackage);
-}
+$.logStep("Publishing main package tarball", manifest.mainPackageTarball);
+await $`npm publish --access public --provenance ${manifest.mainPackageTarball}`;

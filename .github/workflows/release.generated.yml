@@ -19,11 +19,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Clone repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           token: '${{ secrets.GH_DPRINTBOT_PAT }}'
-      - uses: denoland/setup-deno@v2
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
       - name: Bump version and tag
         env:
           GITHUB_TOKEN: '${{ secrets.GH_DPRINTBOT_PAT }}'

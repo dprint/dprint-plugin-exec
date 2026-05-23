@@ -87,12 +87,12 @@ const preReleaseSteps = profiles.map((profile) => {
         return [
           `cd target/${profile.target}/release`,
           `zip -r ${profile.zipFileName} dprint-plugin-exec`,
-          `echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 ${profile.zipFileName} | awk '{print $1}')"`,
+          `echo "ZIP_CHECKSUM=$(shasum -a 256 ${profile.zipFileName} | awk '{print $1}')" >> "$GITHUB_OUTPUT"`,
         ];
       case OperatingSystem.Windows:
         return [
           `Compress-Archive -CompressionLevel Optimal -Force -Path target/${profile.target}/release/dprint-plugin-exec.exe -DestinationPath target/${profile.target}/release/${profile.zipFileName}`,
-          `echo "::set-output name=ZIP_CHECKSUM::$(shasum -a 256 target/${profile.target}/release/${profile.zipFileName} | awk '{print $1}')"`,
+          `echo "ZIP_CHECKSUM=$(shasum -a 256 target/${profile.target}/release/${profile.zipFileName} | awk '{print $1}')" >> "$GITHUB_OUTPUT"`,
         ];
     }
   }
@@ -235,14 +235,14 @@ const buildJob = job("build", {
 const getTagVersion = step({
   id: "get_tag_version",
   name: "Get tag version",
-  run: "echo ::set-output name=TAG_VERSION::${GITHUB_REF/refs\\/tags\\//}",
+  run: "echo \"TAG_VERSION=${GITHUB_REF/refs\\/tags\\//}\" >> \"$GITHUB_OUTPUT\"",
   outputs: ["TAG_VERSION"],
 });
 
 const getPluginFileChecksum = step({
   id: "get_plugin_file_checksum",
   name: "Get plugin file checksum",
-  run: `echo "::set-output name=CHECKSUM::$(shasum -a 256 plugin.json | awk '{print $1}')"`,
+  run: `echo "CHECKSUM=$(shasum -a 256 plugin.json | awk '{print $1}')" >> "$GITHUB_OUTPUT"`,
   outputs: ["CHECKSUM"],
 });
 

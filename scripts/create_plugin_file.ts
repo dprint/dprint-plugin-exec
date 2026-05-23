@@ -1,4 +1,4 @@
-import { $, CargoToml, processPlugin } from "jsr:@dprint/automation@0.10.3";
+import { $, CargoToml, processPlugin } from "jsr:@dprint/automation@0.11.0";
 
 const currentDirPath = $.path(import.meta.dirname!);
 const cargoFilePath = currentDirPath.join("../Cargo.toml");

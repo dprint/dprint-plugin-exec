@@ -1,4 +1,4 @@
-import { generateChangeLog } from "jsr:@dprint/automation@0.10.3";
+import { generateChangeLog } from "jsr:@dprint/automation@0.11.0";
 
 const version = Deno.args[0];
 const checksum = Deno.args[1];

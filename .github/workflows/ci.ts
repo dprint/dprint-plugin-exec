@@ -1,12 +1,5 @@
 #!/usr/bin/env -S deno run -A
-import {
-  conditions,
-  defineMatrix,
-  expr,
-  job,
-  step,
-  workflow,
-} from "jsr:@david/gagen@^0.5.0";
+import { conditions, defineMatrix, expr, job, step, workflow } from "jsr:@david/gagen@^0.5.0";
 
 enum OperatingSystem {
   Macx86 = "macos-15-intel",
@@ -174,7 +167,8 @@ const buildJob = job("build", {
     {
       name: "Setup cross",
       if: isCross,
-      run: "cargo install cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3",
+      run:
+        "cargo install cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3",
     },
     {
       name: "Build (Debug)",
@@ -229,7 +223,7 @@ const buildJob = job("build", {
     ...profiles.map((profile) => ({
       name: `Upload artifacts (${profile.target})`,
       if: target.equals(profile.target).and(isTag),
-      uses: "actions/upload-artifact@v4",
+      uses: "actions/upload-artifact@v7",
       with: {
         name: profile.artifactsName,
         path: `target/${profile.target}/release/${profile.zipFileName}`,
@@ -257,15 +251,19 @@ const draftReleaseJob = job("draft_release", {
   if: isTag,
   needs: [buildJob],
   runsOn: "ubuntu-latest",
+  // id-token: write is required for npm --provenance
+  permissions: { contents: "write", "id-token": "write" },
   steps: [
-    { name: "Checkout", uses: "actions/checkout@v4" },
-    { name: "Download artifacts", uses: "actions/download-artifact@v4" },
+    { name: "Checkout", uses: "actions/checkout@v6" },
+    { name: "Download artifacts", uses: "actions/download-artifact@v8" },
     { uses: "denoland/setup-deno@v2" },
     {
+      uses: "actions/setup-node@v6",
+      with: { "node-version": "24.x", "registry-url": "https://registry.npmjs.org" },
+    },
+    {
       name: "Move downloaded artifacts to root directory",
-      run: profiles.map((profile) =>
-        `mv ${profile.artifactsName}/${profile.zipFileName} .`
-      ),
+      run: profiles.map((profile) => `mv ${profile.artifactsName}/${profile.zipFileName} .`),
     },
     {
       name: "Output checksums",
@@ -281,11 +279,13 @@ const draftReleaseJob = job("draft_release", {
     getPluginFileChecksum,
     {
       name: "Update Config Schema Version",
-      run: `sed -i 's/exec\\/0.0.0/exec\\/${getTagVersion.outputs.TAG_VERSION}/' deployment/schema.json`,
+      run:
+        `sed -i 's/exec\\/0.0.0/exec\\/${getTagVersion.outputs.TAG_VERSION}/' deployment/schema.json`,
     },
     {
       name: "Create release notes",
-      run: `deno run -A ./scripts/generate_release_notes.ts ${getTagVersion.outputs.TAG_VERSION} ${getPluginFileChecksum.outputs.CHECKSUM} > \${{ github.workspace }}-CHANGELOG.txt`,
+      run:
+        `deno run -A ./scripts/generate_release_notes.ts ${getTagVersion.outputs.TAG_VERSION} ${getPluginFileChecksum.outputs.CHECKSUM} > \${{ github.workspace }}-CHANGELOG.txt`,
     },
     {
       name: "Release",
@@ -299,6 +299,14 @@ const draftReleaseJob = job("draft_release", {
         ].join("\n"),
         body_path: "${{ github.workspace }}-CHANGELOG.txt",
       },
+    },
+    {
+      name: "Build npm packages",
+      run: "deno run -A scripts/create_npm_packages.ts",
+    },
+    {
+      name: "Publish npm packages",
+      run: "deno run -A scripts/publish_npm_packages.ts",
     },
   ],
 });

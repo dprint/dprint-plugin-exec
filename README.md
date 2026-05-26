@@ -54,6 +54,53 @@ General config:
 - `timeout` - Number of seconds to allow an executable format to occur before a timeout error occurs (default: `30`).
 - `cwd` - Recommend setting this to `${configDir}` to force it to use the cwd of the current config file.
 
+Matching files to commands:
+
+A command can be matched to files in three ways: `exts`, `fileNames`, or
+`associations`. They differ in what they match and — importantly — in whether
+multiple commands can run on the same file.
+
+What each matches:
+
+- `exts` — by file extension, e.g. `["rs", "py"]`.
+- `fileNames` — by full file name, useful for files without an extension, e.g.
+  `["Dockerfile", "BUILD"]`.
+- `associations` — by glob pattern, e.g. `"**/*.{bazel,bzl}"`. Only **one** glob
+  per command is supported, though brace expansion within that glob is allowed.
+
+How many commands run per file:
+
+- With `exts` or `fileNames`, only the **first** matching command runs on a
+  given file. Subsequent commands that also match are skipped.
+- With `associations`, **every** matching command runs, in the order they appear
+  in the `commands` array.
+
+So if you want to chain formatters on the same file, each chained command must use `associations` — and
+you must also declare `associations` at the **plugin level** (the top-level
+`"exec"` block), otherwise dprint won't route those files to this plugin at all:
+
+```jsonc
+{
+  "exec": {
+    "associations": ["**/*.{rs,swift,txt}"],
+    "commands": [
+      { "command": "rustfmt", "associations": "**/*.rs" },
+      { "command": "swift-format -", "associations": "**/*.swift" },
+      { "command": "keep-sorted -", "associations": "**/*" },
+    ],
+  },
+}
+```
+
+`associations` can do the work of `exts` and `fileNames`; the latter two exist
+as a convenience for the common case where you don't need glob matching or
+command chaining.
+
+Mixing styles across commands is allowed, but if you want chaining for a given
+file type, use `associations` on every command that should participate — an
+`exts`/`fileNames`-only command that matches first will short-circuit the loop
+and prevent later commands from running on that file.
+
 Command config:
 
 - `command` - Command to execute.

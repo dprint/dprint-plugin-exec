@@ -45,6 +45,18 @@ pub struct CommandConfiguration {
   pub file_extensions: Vec<String>,
   pub file_names: Vec<String>,
   pub cache_key_files_hash: Option<String>,
+  /// Command to run once before this command formats its first file.
+  pub setup_command: Option<SetupCommand>,
+}
+
+/// A command run a single time before formatting begins (ex. to install a
+/// toolchain so that parallel formatting doesn't race installing it).
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetupCommand {
+  pub executable: String,
+  /// Executable arguments to add
+  pub args: Vec<String>,
 }
 
 impl CommandConfiguration {
@@ -261,9 +273,12 @@ fn parse_command_obj(
     }
   };
 
+  let setup_command = parse_setup_command(&mut command_obj, &mut diagnostics);
+
   let config = CommandConfiguration {
     executable: command.remove(0),
     args: command,
+    setup_command,
     associations: {
       let maybe_value = command_obj.swap_remove("associations").and_then(|value| match value {
         ConfigKeyValue::String(value) => Some(value),
@@ -342,6 +357,29 @@ fn parse_command_obj(
   }
 
   (Some(config), diagnostics)
+}
+
+fn parse_setup_command(
+  command_obj: &mut ConfigKeyMap,
+  diagnostics: &mut Vec<ConfigurationDiagnostic>,
+) -> Option<SetupCommand> {
+  let raw = get_nullable_value::<String>(command_obj, "setupCommand", diagnostics)?;
+  let mut parts = splitty::split_unquoted_whitespace(&raw)
+    .unwrap_quotes(true)
+    .filter(|p| !p.is_empty())
+    .map(String::from)
+    .collect::<Vec<_>>();
+  if parts.is_empty() {
+    diagnostics.push(ConfigurationDiagnostic {
+      property_name: "setupCommand".to_string(),
+      message: "Expected to find a command name.".to_string(),
+    });
+    return None;
+  }
+  Some(SetupCommand {
+    executable: parts.remove(0),
+    args: parts,
+  })
 }
 
 fn take_string_or_string_vec(
@@ -549,6 +587,43 @@ mod tests {
       vec![ConfigurationDiagnostic {
         property_name: "commands[0].associations".to_string(),
         message: "Expected string or array value.".to_string(),
+      }],
+    );
+  }
+
+  #[test]
+  fn setup_command() {
+    let unresolved_config = parse_config(json!({
+      "commands": [{
+        "command": "command",
+        "exts": ["txt"],
+        "setupCommand": "rustup toolchain install nightly-2025-09-01",
+      }],
+    }));
+    let result = Configuration::resolve(unresolved_config, &Default::default());
+    assert!(result.diagnostics.is_empty());
+    let setup = result.config.commands[0].setup_command.as_ref().unwrap();
+    assert_eq!(setup.executable, "rustup");
+    assert_eq!(
+      setup.args,
+      vec!["toolchain", "install", "nightly-2025-09-01"]
+    );
+  }
+
+  #[test]
+  fn setup_command_empty() {
+    let unresolved_config = parse_config(json!({
+      "commands": [{
+        "command": "command",
+        "exts": ["txt"],
+        "setupCommand": "",
+      }],
+    }));
+    run_diagnostics_test(
+      unresolved_config,
+      vec![ConfigurationDiagnostic {
+        property_name: "commands[0].setupCommand".to_string(),
+        message: "Expected to find a command name.".to_string(),
       }],
     );
   }

@@ -1,0 +1,14 @@
+~~ {
+  "lineWidth": 30,
+  "commands": [{
+    "command": "deno run -A ./tests/fold.ts -w 30",
+    "setupCommand": "deno eval 'Deno.exit(0)'",
+    "exts": "txt"
+  }]
+} ~~
+== runs the setup command then formats normally ==
+this should be wrapped because it is a long text
+
+[expect]
+this should be wrapped because
+it is a long text

@@ -65,6 +65,7 @@ Command config:
 - `stdin` - If the text should be provided via stdin (default: `true`)
 - `cwd` - Current working directory to use when launching this command (default: dprint's cwd or the root `cwd` setting if set)
 - `cacheKeyFiles` - A list of paths (relative to `cwd`) to files used to automatically compute a `cacheKey`. This allows automatic invalidation of dprint's incremental cache when any of these files are changed.
+- `setupCommand` - Command to run a single time before this command formats its first file. It runs to completion before any formatting starts, which is useful for one-time setup that would otherwise race when formatting in parallel (ex. installing a toolchain). It is only run when a file actually matches this command, runs in the command's `cwd`, is subject to the same `timeout`, and is not run if formatting is cancelled. It does not support command templates.
 
 Command templates (ex. see the prettier example above):
 
@@ -124,6 +125,32 @@ Use the `rustfmt` binary so you can format stdin.
       "command": "rustfmt --edition 2024",
       "exts": ["rs"],
       // add the config files for automatic cache invalidation when the rust version or rustfmt config changes
+      "cacheKeyFiles": [
+        "rustfmt.toml",
+        "rust-toolchain.toml",
+      ],
+    }],
+  },
+  "plugins": [
+    // run `dprint config add exec` to add the latest exec plugin's url here
+  ],
+}
+```
+
+### Example - rustfmt with a pinned nightly toolchain
+
+When running `rustfmt` through `rustup` with a toolchain that isn't installed yet, `rustup` will try to install it on the fly. Because dprint formats files in parallel, multiple installs can race and fail. Use `setupCommand` to install the toolchain a single time before formatting begins.
+
+```jsonc
+{
+  // ...etc...
+  "exec": {
+    "cwd": "${configDir}",
+    "commands": [{
+      "command": "rustup run nightly-2025-09-01 rustfmt --edition 2024",
+      // installs the toolchain once before formatting the first file
+      "setupCommand": "rustup toolchain install nightly-2025-09-01",
+      "exts": ["rs"],
       "cacheKeyFiles": [
         "rustfmt.toml",
         "rust-toolchain.toml",

@@ -137,32 +137,6 @@ Use the `rustfmt` binary so you can format stdin.
 }
 ```
 
-### Example - rustfmt with a pinned nightly toolchain
-
-When running `rustfmt` through `rustup` with a toolchain that isn't installed yet, `rustup` will try to install it on the fly. Because dprint formats files in parallel, multiple installs can race and fail. Use `setupCommand` to install the toolchain a single time before formatting begins.
-
-```jsonc
-{
-  // ...etc...
-  "exec": {
-    "cwd": "${configDir}",
-    "commands": [{
-      "command": "rustup run nightly-2025-09-01 rustfmt --edition 2024",
-      // installs the toolchain once before formatting the first file
-      "setupCommand": "rustup toolchain install nightly-2025-09-01",
-      "exts": ["rs"],
-      "cacheKeyFiles": [
-        "rustfmt.toml",
-        "rust-toolchain.toml",
-      ],
-    }],
-  },
-  "plugins": [
-    // run `dprint config add exec` to add the latest exec plugin's url here
-  ],
-}
-```
-
 ### Example - prettier
 
 Consider using [dprint-plugin-prettier](https://dprint.dev/plugins/prettier/) instead as it will be much faster.

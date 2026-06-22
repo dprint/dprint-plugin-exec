@@ -55,6 +55,10 @@ const profileDataItems: ProfileData[] = [{
   cross: true,
   target: "loongarch64-unknown-linux-gnu",
 }, {
+  os: OperatingSystem.Linux,
+  cross: true,
+  target: "loongarch64-unknown-linux-musl",
+}, {
   // ppc64le: built with cross, which provides an image for this target.
   os: OperatingSystem.Linux,
   cross: true,

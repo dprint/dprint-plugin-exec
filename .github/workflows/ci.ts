@@ -13,6 +13,12 @@ interface ProfileData {
   target: string;
   cross?: boolean;
   runTests?: boolean;
+  /**
+   * Build by running cargo directly inside this Docker image. Used for targets
+   * cross doesn't provide an image for (e.g. powerpc64le musl), where the image
+   * already bundles the toolchain.
+   */
+  muslCrossImage?: string;
 }
 
 const profileDataItems: ProfileData[] = [{
@@ -48,6 +54,17 @@ const profileDataItems: ProfileData[] = [{
   os: OperatingSystem.Linux,
   cross: true,
   target: "loongarch64-unknown-linux-gnu",
+}, {
+  // ppc64le: built with cross, which provides an image for this target.
+  os: OperatingSystem.Linux,
+  cross: true,
+  target: "powerpc64le-unknown-linux-gnu",
+}, {
+  // cross has no powerpc64le musl image, so build directly in the prebuilt
+  // rust-musl-cross toolchain image instead (see the "Build musl image" steps).
+  os: OperatingSystem.Linux,
+  target: "powerpc64le-unknown-linux-musl",
+  muslCrossImage: "ghcr.io/rust-cross/rust-musl-cross:powerpc64le-musl",
 }];
 
 const profiles = profileDataItems.map((profile) => {
@@ -65,18 +82,22 @@ const matrix = defineMatrix({
     run_tests: (profile.runTests ?? false).toString(),
     target: profile.target,
     cross: (profile.cross ?? false).toString(),
+    musl_image: profile.muslCrossImage ?? "",
   })),
 });
 
 const target = expr("matrix.config.target");
 const os = expr("matrix.config.os");
 const cross = expr("matrix.config.cross");
+const muslImage = expr("matrix.config.musl_image");
 const runTests = expr("matrix.config.run_tests");
 
 const isTag = conditions.isTag();
 const isNotTag = isTag.not();
 const isCross = cross.equals("true");
 const isNotCross = cross.notEquals("true");
+const isMuslImage = muslImage.notEquals("");
+const isNotMuslImage = muslImage.equals("");
 
 const preReleaseSteps = profiles.map((profile) => {
   function getRunSteps() {
@@ -172,7 +193,7 @@ const buildJob = job("build", {
     },
     {
       name: "Build (Debug)",
-      if: isNotCross.and(isNotTag),
+      if: isNotCross.and(isNotMuslImage).and(isNotTag),
       env: {
         CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "aarch64-linux-gnu-gcc",
       },
@@ -180,7 +201,7 @@ const buildJob = job("build", {
     },
     {
       name: "Build release",
-      if: isNotCross.and(isTag),
+      if: isNotCross.and(isNotMuslImage).and(isTag),
       env: {
         CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "aarch64-linux-gnu-gcc",
       },
@@ -195,6 +216,27 @@ const buildJob = job("build", {
       name: "Build cross (Release)",
       if: isCross.and(isTag),
       run: "cross build --locked --target ${{matrix.config.target}} --release",
+    },
+    {
+      // build inside the rust-musl-cross image, which bundles the toolchain and
+      // runs as root, so it can install the pinned toolchain into its own
+      // /root/.rustup -- the reason this can't go through cross, which runs as
+      // the non-root host user. The output is chown'd back so later steps can
+      // read and zip it.
+      name: "Build musl image (Debug)",
+      if: isMuslImage.and(isNotTag),
+      run: [
+        `docker run --rm -v "$GITHUB_WORKSPACE":/home/rust/src -w /home/rust/src \${{matrix.config.musl_image}} cargo build --locked --target \${{matrix.config.target}}`,
+        `sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/target"`,
+      ],
+    },
+    {
+      name: "Build musl image (Release)",
+      if: isMuslImage.and(isTag),
+      run: [
+        `docker run --rm -v "$GITHUB_WORKSPACE":/home/rust/src -w /home/rust/src \${{matrix.config.musl_image}} cargo build --locked --target \${{matrix.config.target}} --release`,
+        `sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/target"`,
+      ],
     },
     {
       name: "Lint",

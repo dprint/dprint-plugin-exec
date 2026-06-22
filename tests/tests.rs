@@ -49,6 +49,7 @@ fn test_specs() {
           file_text.into_bytes(),
           Arc::new(config_result.config),
           Arc::new(dprint_core::plugins::NullCancellationToken),
+          &dprint_plugin_exec::handler::SetupState::default(),
         )
         .await
         .map(|maybe_bytes| maybe_bytes.map(|bytes| String::from_utf8(bytes).unwrap()))

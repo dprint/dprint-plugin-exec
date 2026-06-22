@@ -65,6 +65,7 @@ Command config:
 - `stdin` - If the text should be provided via stdin (default: `true`)
 - `cwd` - Current working directory to use when launching this command (default: dprint's cwd or the root `cwd` setting if set)
 - `cacheKeyFiles` - A list of paths (relative to `cwd`) to files used to automatically compute a `cacheKey`. This allows automatic invalidation of dprint's incremental cache when any of these files are changed.
+- `setupCommand` - Command to run a single time before this command formats its first file. It runs to completion before any formatting starts, which is useful for one-time setup that would otherwise race when formatting in parallel (ex. installing a toolchain). It is only run when a file actually matches this command, runs in the command's `cwd`, is subject to the same `timeout`, and is not run if formatting is cancelled. It does not support command templates.
 
 Command templates (ex. see the prettier example above):
 

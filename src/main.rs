@@ -15,6 +15,6 @@ fn main() -> Result<()> {
       start_parent_process_checker_task(parent_process_id);
     }
 
-    handle_process_stdio_messages(ExecHandler).await
+    handle_process_stdio_messages(ExecHandler::default()).await
   })
 }

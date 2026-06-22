@@ -1,4 +1,6 @@
 use std::borrow::Cow;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::io::Write;
 use std::ops::Deref;
 use std::ops::DerefMut;
@@ -7,6 +9,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::process::ExitStatus;
 use std::process::Stdio;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -29,12 +32,14 @@ use dprint_core::plugins::PluginResolveConfigurationResult;
 use handlebars::Handlebars;
 use serde::Deserialize;
 use serde::Serialize;
+use tokio::sync::OnceCell;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Receiver;
 use tokio::sync::oneshot::Sender;
 
 use crate::configuration::CommandConfiguration;
 use crate::configuration::Configuration;
+use crate::configuration::SetupCommand;
 
 struct ChildKillOnDrop(std::process::Child);
 
@@ -58,7 +63,12 @@ impl DerefMut for ChildKillOnDrop {
   }
 }
 
-pub struct ExecHandler;
+#[derive(Default)]
+pub struct ExecHandler {
+  /// Tracks setup commands that have already run so they only run once
+  /// for the lifetime of the process, even while formatting in parallel.
+  setup_state: SetupState,
+}
 
 #[async_trait(?Send)]
 impl AsyncPluginHandler for ExecHandler {
@@ -129,6 +139,7 @@ impl AsyncPluginHandler for ExecHandler {
       request.file_bytes,
       request.config,
       request.token.clone(),
+      &self.setup_state,
     )
     .await
   }
@@ -139,6 +150,7 @@ pub async fn format_bytes(
   original_file_bytes: Vec<u8>,
   config: Arc<Configuration>,
   token: Arc<dyn CancellationToken>,
+  setup_state: &SetupState,
 ) -> FormatResult {
   fn trim_bytes_len(bytes: &[u8]) -> usize {
     let mut start = 0;
@@ -161,6 +173,17 @@ pub async fn format_bytes(
 
   let mut file_bytes: Cow<Vec<u8>> = Cow::Borrowed(&original_file_bytes);
   for command in select_commands(&config, &file_path)? {
+    // run the command's setup once before formatting with it for the first time
+    if let Some(setup_command) = &command.setup_command {
+      match setup_state
+        .run_once(&command.cwd, setup_command, &config, &token)
+        .await?
+      {
+        SetupRun::Completed => {}
+        SetupRun::Cancelled => return Ok(None),
+      }
+    }
+
     // format here
     let args = maybe_substitute_variables(&file_path, &config, command);
 
@@ -322,6 +345,125 @@ fn timeout_err(config: &Configuration) -> Error {
   )
 }
 
+/// Remembers which setup commands have already been run so that a command's
+/// `setupCommand` only runs a single time, even when many files are being
+/// formatted in parallel (see https://github.com/dprint/dprint/issues/1023).
+#[derive(Default, Clone)]
+pub struct SetupState {
+  cells: Rc<RefCell<HashMap<String, Rc<OnceCell<()>>>>>,
+}
+
+enum SetupRun {
+  Completed,
+  Cancelled,
+}
+
+enum SetupInitError {
+  Cancelled,
+  Failed(Error),
+}
+
+impl SetupState {
+  async fn run_once(
+    &self,
+    cwd: &Path,
+    setup_command: &SetupCommand,
+    config: &Configuration,
+    token: &Arc<dyn CancellationToken>,
+  ) -> Result<SetupRun> {
+    // the cwd is part of the key because the same command run in different
+    // directories may produce different results
+    let key = format!(
+      "{}\0{} {}",
+      cwd.display(),
+      setup_command.executable,
+      setup_command.args.join(" ")
+    );
+    let cell = {
+      let mut cells = self.cells.borrow_mut();
+      cells.entry(key).or_default().clone()
+    };
+    // get_or_try_init ensures only one caller runs the setup at a time and that
+    // the others wait for it to finish; a failure is not cached so it can be
+    // retried by the next file rather than poisoning all formatting
+    match cell
+      .get_or_try_init(|| run_setup_command(cwd, setup_command, config, token))
+      .await
+    {
+      Ok(()) => Ok(SetupRun::Completed),
+      Err(SetupInitError::Cancelled) => Ok(SetupRun::Cancelled),
+      Err(SetupInitError::Failed(err)) => Err(err),
+    }
+  }
+}
+
+async fn run_setup_command(
+  cwd: &Path,
+  setup_command: &SetupCommand,
+  config: &Configuration,
+  token: &Arc<dyn CancellationToken>,
+) -> Result<(), SetupInitError> {
+  let mut child = ChildKillOnDrop(
+    Command::new(&setup_command.executable)
+      .current_dir(cwd)
+      .stdin(Stdio::null())
+      // a plugin must not write to stdout (it's the protocol channel)
+      .stdout(Stdio::null())
+      .stderr(Stdio::piped())
+      .args(&setup_command.args)
+      .spawn()
+      .map_err(|e| SetupInitError::Failed(anyhow!("Cannot start setup command process: {}", e)))?,
+  );
+
+  // capture stderr to surface it if the command fails
+  let (err_tx, err_rx) = oneshot::channel();
+  let mut handles = Vec::with_capacity(1);
+  if let Some(stderr) = child.stderr.take() {
+    handles.push(dprint_core::async_runtime::spawn_blocking(|| {
+      read_stream_lines(stderr, err_tx)
+    }));
+  }
+
+  let child_completed = dprint_core::async_runtime::spawn_blocking(move || {
+    child
+      .wait()
+      .map_err(|e| anyhow!("Error while waiting for setup command to complete: {}", e))
+  });
+
+  let result_future = async {
+    let handles_future = dprint_core::async_runtime::future::join_all(handles);
+    let (child_rs, handle_results) = tokio::join!(child_completed, handles_future);
+    let exit_status = child_rs??;
+    for handle_result in handle_results {
+      handle_result??; // surface any errors capturing
+    }
+    Ok::<_, Error>(exit_status)
+  };
+
+  tokio::select! {
+    _ = token.wait_cancellation() => Err(SetupInitError::Cancelled),
+    _ = tokio::time::sleep(Duration::from_secs(config.timeout as u64)) => {
+      Err(SetupInitError::Failed(anyhow!(
+        "Setup command has not returned a result within {} seconds.",
+        config.timeout,
+      )))
+    }
+    result = result_future => match result {
+      Ok(exit_status) if exit_status.success() => Ok(()),
+      Ok(exit_status) => Err(SetupInitError::Failed(anyhow!(
+        "Setup command '{}' exited with code {}: {}",
+        setup_command.executable,
+        exit_status
+          .code()
+          .map(|code| code.to_string())
+          .unwrap_or_else(|| "unknown".to_string()),
+        String::from_utf8_lossy(&err_rx.await.unwrap_or_default())
+      ))),
+      Err(err) => Err(SetupInitError::Failed(err)),
+    }
+  }
+}
+
 fn read_stream_lines<R>(mut readable: R, sender: Sender<Vec<u8>>) -> Result<(), Error>
 where
   R: std::io::Read + Unpin,
@@ -376,6 +518,7 @@ mod test {
 
   use dprint_core::plugins::NullCancellationToken;
 
+  use super::SetupState;
   use crate::configuration::Configuration;
   use crate::format_bytes;
 
@@ -395,6 +538,7 @@ mod test {
       "1".repeat(101).into_bytes(),
       Arc::new(config),
       token,
+      &SetupState::default(),
     )
     .await;
     let err_text = result.err().unwrap().to_string();
@@ -406,5 +550,52 @@ mod test {
         "Perhaps dprint-plugin-exec has been misconfigured?"
       )
     )
+  }
+
+  #[tokio::test]
+  async fn runs_setup_command_once_across_formats() {
+    // forward slashes work cross-platform for these tools and avoid splitty
+    // treating backslashes in Windows paths as escapes
+    fn to_arg(path: &std::path::Path) -> String {
+      path.to_string_lossy().replace('\\', "/")
+    }
+
+    let marker = std::env::temp_dir().join(format!(
+      "dprint-exec-setup-marker-{}.txt",
+      std::process::id()
+    ));
+    let _ = std::fs::remove_file(&marker);
+    let script = std::env::current_dir()
+      .unwrap()
+      .join("tests/resources/append-marker.js");
+
+    let unresolved_config = serde_json::json!({
+      "commands": [{
+        "command": "deno run -A ./tests/fold.ts -w 30",
+        "setupCommand": format!("deno run -A {} {}", to_arg(&script), to_arg(&marker)),
+        "exts": ["txt"]
+      }]
+    });
+    let unresolved_config = serde_json::from_value(unresolved_config).unwrap();
+    let config = Arc::new(Configuration::resolve(unresolved_config, &Default::default()).config);
+    let setup_state = SetupState::default();
+
+    // format two different files sharing the same setup state
+    for file_name in ["a.txt", "b.txt"] {
+      let result = format_bytes(
+        PathBuf::from(file_name),
+        b"hello world".to_vec(),
+        config.clone(),
+        Arc::new(NullCancellationToken),
+        &setup_state,
+      )
+      .await;
+      assert!(result.is_ok(), "{:?}", result.err());
+    }
+
+    // the setup command should have run exactly once
+    let marker_contents = std::fs::read_to_string(&marker).unwrap();
+    let _ = std::fs::remove_file(&marker);
+    assert_eq!(marker_contents, "x");
   }
 }

@@ -27,11 +27,11 @@ workflow({
     steps: [
       {
         name: "Clone repository",
-        uses: "actions/checkout@v4",
+        uses: "actions/checkout@v6",
         with: { token: "${{ secrets.GH_DPRINTBOT_PAT }}" },
       },
       { uses: "denoland/setup-deno@v2" },
-      { uses: "dtolnay/rust-toolchain@stable" },
+      { uses: "dsherret/rust-toolchain-file@v1" },
       {
         name: "Bump version and tag",
         env: {
@@ -41,7 +41,7 @@ workflow({
         run: [
           `git config user.email "${actor}@users.noreply.github.com"`,
           `git config user.name "${actor}"`,
-          `deno run -A jsr:@dprint/automation@0.10.3/tasks/publish-release --${releaseKind}`,
+          `deno run -A jsr:@dprint/automation@0.12.1/tasks/publish-release --${releaseKind}`,
         ],
       },
     ],

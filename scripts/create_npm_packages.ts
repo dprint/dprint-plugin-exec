@@ -15,6 +15,7 @@ const platforms: processPlugin.Platform[] = [
   "linux-x86_64-musl",
   "linux-riscv64",
   "linux-loongarch64",
+  "linux-loongarch64-musl",
   "linux-powerpc64",
   "linux-powerpc64-musl",
   "windows-x86_64",

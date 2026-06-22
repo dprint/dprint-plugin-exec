@@ -218,15 +218,17 @@ const buildJob = job("build", {
       run: "cross build --locked --target ${{matrix.config.target}} --release",
     },
     {
-      // build inside the rust-musl-cross image, which bundles the toolchain and
-      // runs as root, so it can install the pinned toolchain into its own
-      // /root/.rustup -- the reason this can't go through cross, which runs as
-      // the non-root host user. The output is chown'd back so later steps can
-      // read and zip it.
+      // build inside the rust-musl-cross image, which bundles the musl
+      // toolchain and runs as root, so it can install the pinned toolchain into
+      // its own /root/.rustup -- the reason this can't go through cross, which
+      // runs as the non-root host user. `rustup target add` is required because
+      // rust-toolchain.toml pins a channel that rustup installs fresh, without
+      // the target's std (only the image's default toolchain has it baked in).
+      // The output is chown'd back so later steps can read and zip it.
       name: "Build musl image (Debug)",
       if: isMuslImage.and(isNotTag),
       run: [
-        `docker run --rm -v "$GITHUB_WORKSPACE":/home/rust/src -w /home/rust/src \${{matrix.config.musl_image}} cargo build --locked --target \${{matrix.config.target}}`,
+        `docker run --rm -v "$GITHUB_WORKSPACE":/home/rust/src -w /home/rust/src \${{matrix.config.musl_image}} bash -c "rustup target add \${{matrix.config.target}} && cargo build --locked --target \${{matrix.config.target}}"`,
         `sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/target"`,
       ],
     },
@@ -234,7 +236,7 @@ const buildJob = job("build", {
       name: "Build musl image (Release)",
       if: isMuslImage.and(isTag),
       run: [
-        `docker run --rm -v "$GITHUB_WORKSPACE":/home/rust/src -w /home/rust/src \${{matrix.config.musl_image}} cargo build --locked --target \${{matrix.config.target}} --release`,
+        `docker run --rm -v "$GITHUB_WORKSPACE":/home/rust/src -w /home/rust/src \${{matrix.config.musl_image}} bash -c "rustup target add \${{matrix.config.target}} && cargo build --locked --target \${{matrix.config.target}} --release"`,
         `sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE/target"`,
       ],
     },

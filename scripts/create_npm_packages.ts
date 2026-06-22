@@ -1,4 +1,4 @@
-import { $, CargoToml, getChecksum, processPlugin } from "jsr:@dprint/automation@0.11.2";
+import { $, CargoToml, getChecksum, processPlugin } from "jsr:@dprint/automation@0.12.1";
 
 const pluginName = "dprint-plugin-exec";
 const mainPackageName = "@dprint/exec";
@@ -15,6 +15,8 @@ const platforms: processPlugin.Platform[] = [
   "linux-x86_64-musl",
   "linux-riscv64",
   "linux-loongarch64",
+  "linux-powerpc64",
+  "linux-powerpc64-musl",
   "windows-x86_64",
 ];
 

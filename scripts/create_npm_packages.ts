@@ -21,6 +21,7 @@ const platforms: processPlugin.Platform[] = [
   "android-aarch64",
   "android-x86_64",
   "windows-x86_64",
+  "windows-aarch64",
 ];
 
 const rootDir = $.path(import.meta.dirname!).join("..");

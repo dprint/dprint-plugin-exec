@@ -35,6 +35,11 @@ jobs:
             target: x86_64-pc-windows-msvc
             cross: 'false'
             musl_image: ''
+          - os: windows-latest
+            run_tests: 'false'
+            target: aarch64-pc-windows-msvc
+            cross: 'false'
+            musl_image: ''
           - os: ubuntu-22.04
             run_tests: 'true'
             target: x86_64-unknown-linux-gnu
@@ -97,6 +102,7 @@ jobs:
       ZIP_CHECKSUM_X86_64_APPLE_DARWIN: '${{ steps.pre_release_x86_64_apple_darwin.outputs.ZIP_CHECKSUM }}'
       ZIP_CHECKSUM_AARCH64_APPLE_DARWIN: '${{ steps.pre_release_aarch64_apple_darwin.outputs.ZIP_CHECKSUM }}'
       ZIP_CHECKSUM_X86_64_PC_WINDOWS_MSVC: '${{ steps.pre_release_x86_64_pc_windows_msvc.outputs.ZIP_CHECKSUM }}'
+      ZIP_CHECKSUM_AARCH64_PC_WINDOWS_MSVC: '${{ steps.pre_release_aarch64_pc_windows_msvc.outputs.ZIP_CHECKSUM }}'
       ZIP_CHECKSUM_X86_64_UNKNOWN_LINUX_GNU: '${{ steps.pre_release_x86_64_unknown_linux_gnu.outputs.ZIP_CHECKSUM }}'
       ZIP_CHECKSUM_X86_64_UNKNOWN_LINUX_MUSL: '${{ steps.pre_release_x86_64_unknown_linux_musl.outputs.ZIP_CHECKSUM }}'
       ZIP_CHECKSUM_AARCH64_UNKNOWN_LINUX_GNU: '${{ steps.pre_release_aarch64_unknown_linux_gnu.outputs.ZIP_CHECKSUM }}'
@@ -139,6 +145,9 @@ jobs:
           sudo apt update
           sudo apt install gcc-aarch64-linux-gnu musl musl-dev musl-tools
           rustup target add aarch64-unknown-linux-musl
+      - name: Setup (Windows aarch64)
+        if: matrix.config.target == 'aarch64-pc-windows-msvc'
+        run: rustup target add aarch64-pc-windows-msvc
       - name: Setup cross
         if: matrix.config.cross == 'true'
         run: 'cargo install cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3'
@@ -202,6 +211,12 @@ jobs:
         run: |-
           Compress-Archive -CompressionLevel Optimal -Force -Path target/x86_64-pc-windows-msvc/release/dprint-plugin-exec.exe -DestinationPath target/x86_64-pc-windows-msvc/release/dprint-plugin-exec-x86_64-pc-windows-msvc.zip
           echo "ZIP_CHECKSUM=$(shasum -a 256 target/x86_64-pc-windows-msvc/release/dprint-plugin-exec-x86_64-pc-windows-msvc.zip | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      - name: Pre-release (aarch64-pc-windows-msvc)
+        id: pre_release_aarch64_pc_windows_msvc
+        if: 'matrix.config.target == ''aarch64-pc-windows-msvc'' && startsWith(github.ref, ''refs/tags/'')'
+        run: |-
+          Compress-Archive -CompressionLevel Optimal -Force -Path target/aarch64-pc-windows-msvc/release/dprint-plugin-exec.exe -DestinationPath target/aarch64-pc-windows-msvc/release/dprint-plugin-exec-aarch64-pc-windows-msvc.zip
+          echo "ZIP_CHECKSUM=$(shasum -a 256 target/aarch64-pc-windows-msvc/release/dprint-plugin-exec-aarch64-pc-windows-msvc.zip | awk '{print $1}')" >> "$GITHUB_OUTPUT"
       - name: Pre-release (x86_64-unknown-linux-gnu)
         id: pre_release_x86_64_unknown_linux_gnu
         if: 'matrix.config.target == ''x86_64-unknown-linux-gnu'' && startsWith(github.ref, ''refs/tags/'')'
@@ -297,6 +312,12 @@ jobs:
         with:
           name: x86_64-pc-windows-msvc-artifacts
           path: target/x86_64-pc-windows-msvc/release/dprint-plugin-exec-x86_64-pc-windows-msvc.zip
+      - name: Upload artifacts (aarch64-pc-windows-msvc)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: 'matrix.config.target == ''aarch64-pc-windows-msvc'' && startsWith(github.ref, ''refs/tags/'')'
+        with:
+          name: aarch64-pc-windows-msvc-artifacts
+          path: target/aarch64-pc-windows-msvc/release/dprint-plugin-exec-aarch64-pc-windows-msvc.zip
       - name: Upload artifacts (x86_64-unknown-linux-gnu)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: 'matrix.config.target == ''x86_64-unknown-linux-gnu'' && startsWith(github.ref, ''refs/tags/'')'
@@ -387,6 +408,7 @@ jobs:
           mv x86_64-apple-darwin-artifacts/dprint-plugin-exec-x86_64-apple-darwin.zip .
           mv aarch64-apple-darwin-artifacts/dprint-plugin-exec-aarch64-apple-darwin.zip .
           mv x86_64-pc-windows-msvc-artifacts/dprint-plugin-exec-x86_64-pc-windows-msvc.zip .
+          mv aarch64-pc-windows-msvc-artifacts/dprint-plugin-exec-aarch64-pc-windows-msvc.zip .
           mv x86_64-unknown-linux-gnu-artifacts/dprint-plugin-exec-x86_64-unknown-linux-gnu.zip .
           mv x86_64-unknown-linux-musl-artifacts/dprint-plugin-exec-x86_64-unknown-linux-musl.zip .
           mv aarch64-unknown-linux-gnu-artifacts/dprint-plugin-exec-aarch64-unknown-linux-gnu.zip .
@@ -403,6 +425,7 @@ jobs:
           echo "dprint-plugin-exec-x86_64-apple-darwin.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_X86_64_APPLE_DARWIN }}"
           echo "dprint-plugin-exec-aarch64-apple-darwin.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_AARCH64_APPLE_DARWIN }}"
           echo "dprint-plugin-exec-x86_64-pc-windows-msvc.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_X86_64_PC_WINDOWS_MSVC }}"
+          echo "dprint-plugin-exec-aarch64-pc-windows-msvc.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_AARCH64_PC_WINDOWS_MSVC }}"
           echo "dprint-plugin-exec-x86_64-unknown-linux-gnu.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_X86_64_UNKNOWN_LINUX_GNU }}"
           echo "dprint-plugin-exec-x86_64-unknown-linux-musl.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_X86_64_UNKNOWN_LINUX_MUSL }}"
           echo "dprint-plugin-exec-aarch64-unknown-linux-gnu.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_AARCH64_UNKNOWN_LINUX_GNU }}"
@@ -437,6 +460,7 @@ jobs:
             dprint-plugin-exec-x86_64-apple-darwin.zip
             dprint-plugin-exec-aarch64-apple-darwin.zip
             dprint-plugin-exec-x86_64-pc-windows-msvc.zip
+            dprint-plugin-exec-aarch64-pc-windows-msvc.zip
             dprint-plugin-exec-x86_64-unknown-linux-gnu.zip
             dprint-plugin-exec-x86_64-unknown-linux-musl.zip
             dprint-plugin-exec-aarch64-unknown-linux-gnu.zip

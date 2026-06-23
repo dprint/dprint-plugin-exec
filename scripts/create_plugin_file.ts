@@ -21,6 +21,7 @@ await processPlugin.createDprintOrgProcessPlugin({
     "android-aarch64",
     "android-x86_64",
     "windows-x86_64",
+    "windows-aarch64",
   ],
   isTest: Deno.args.some(a => a == "--test"),
 });

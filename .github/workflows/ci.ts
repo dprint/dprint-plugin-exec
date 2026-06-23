@@ -34,6 +34,11 @@ const profileDataItems: ProfileData[] = [{
   target: "x86_64-pc-windows-msvc",
   runTests: true,
 }, {
+  // windows arm: cross-compiled on the x64 windows runner, which ships the
+  // MSVC ARM64 cross tools. can't execute on the x64 runner, so no tests.
+  os: OperatingSystem.Windows,
+  target: "aarch64-pc-windows-msvc",
+}, {
   os: OperatingSystem.Linux,
   target: "x86_64-unknown-linux-gnu",
   runTests: true,
@@ -198,6 +203,11 @@ const buildJob = job("build", {
         "sudo apt install gcc-aarch64-linux-gnu musl musl-dev musl-tools",
         "rustup target add aarch64-unknown-linux-musl",
       ],
+    },
+    {
+      name: "Setup (Windows aarch64)",
+      if: target.equals("aarch64-pc-windows-msvc"),
+      run: ["rustup target add aarch64-pc-windows-msvc"],
     },
     {
       name: "Setup cross",

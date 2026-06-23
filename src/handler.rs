@@ -176,7 +176,7 @@ pub async fn format_bytes(
     // run the command's setup once before formatting with it for the first time
     if let Some(setup_command) = &command.setup_command {
       match setup_state
-        .run_once(&command.cwd, setup_command, &config, &token)
+        .run_once(&command.cwd, setup_command, &token)
         .await?
       {
         SetupRun::Completed => {}
@@ -368,7 +368,6 @@ impl SetupState {
     &self,
     cwd: &Path,
     setup_command: &SetupCommand,
-    config: &Configuration,
     token: &Arc<dyn CancellationToken>,
   ) -> Result<SetupRun> {
     // the cwd is part of the key because the same command run in different
@@ -387,7 +386,7 @@ impl SetupState {
     // the others wait for it to finish; a failure is not cached so it can be
     // retried by the next file rather than poisoning all formatting
     match cell
-      .get_or_try_init(|| run_setup_command(cwd, setup_command, config, token))
+      .get_or_try_init(|| run_setup_command(cwd, setup_command, token))
       .await
     {
       Ok(()) => Ok(SetupRun::Completed),
@@ -400,7 +399,6 @@ impl SetupState {
 async fn run_setup_command(
   cwd: &Path,
   setup_command: &SetupCommand,
-  config: &Configuration,
   token: &Arc<dyn CancellationToken>,
 ) -> Result<(), SetupInitError> {
   let mut child = ChildKillOnDrop(
@@ -442,12 +440,6 @@ async fn run_setup_command(
 
   tokio::select! {
     _ = token.wait_cancellation() => Err(SetupInitError::Cancelled),
-    _ = tokio::time::sleep(Duration::from_secs(config.timeout as u64)) => {
-      Err(SetupInitError::Failed(anyhow!(
-        "Setup command has not returned a result within {} seconds.",
-        config.timeout,
-      )))
-    }
     result = result_future => match result {
       Ok(exit_status) if exit_status.success() => Ok(()),
       Ok(exit_status) => Err(SetupInitError::Failed(anyhow!(

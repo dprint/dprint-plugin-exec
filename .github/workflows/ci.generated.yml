@@ -80,6 +80,16 @@ jobs:
             target: powerpc64le-unknown-linux-musl
             cross: 'false'
             musl_image: 'ghcr.io/rust-cross/rust-musl-cross:powerpc64le-musl'
+          - os: ubuntu-22.04
+            run_tests: 'false'
+            target: aarch64-linux-android
+            cross: 'true'
+            musl_image: ''
+          - os: ubuntu-22.04
+            run_tests: 'false'
+            target: x86_64-linux-android
+            cross: 'true'
+            musl_image: ''
     env:
       CARGO_INCREMENTAL: 0
       RUST_BACKTRACE: full
@@ -96,6 +106,8 @@ jobs:
       ZIP_CHECKSUM_LOONGARCH64_UNKNOWN_LINUX_MUSL: '${{ steps.pre_release_loongarch64_unknown_linux_musl.outputs.ZIP_CHECKSUM }}'
       ZIP_CHECKSUM_POWERPC64LE_UNKNOWN_LINUX_GNU: '${{ steps.pre_release_powerpc64le_unknown_linux_gnu.outputs.ZIP_CHECKSUM }}'
       ZIP_CHECKSUM_POWERPC64LE_UNKNOWN_LINUX_MUSL: '${{ steps.pre_release_powerpc64le_unknown_linux_musl.outputs.ZIP_CHECKSUM }}'
+      ZIP_CHECKSUM_AARCH64_LINUX_ANDROID: '${{ steps.pre_release_aarch64_linux_android.outputs.ZIP_CHECKSUM }}'
+      ZIP_CHECKSUM_X86_64_LINUX_ANDROID: '${{ steps.pre_release_x86_64_linux_android.outputs.ZIP_CHECKSUM }}'
     steps:
       - name: Prepare git
         run: |-
@@ -253,6 +265,20 @@ jobs:
           cd target/powerpc64le-unknown-linux-musl/release
           zip -r dprint-plugin-exec-powerpc64le-unknown-linux-musl.zip dprint-plugin-exec
           echo "ZIP_CHECKSUM=$(shasum -a 256 dprint-plugin-exec-powerpc64le-unknown-linux-musl.zip | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      - name: Pre-release (aarch64-linux-android)
+        id: pre_release_aarch64_linux_android
+        if: 'matrix.config.target == ''aarch64-linux-android'' && startsWith(github.ref, ''refs/tags/'')'
+        run: |-
+          cd target/aarch64-linux-android/release
+          zip -r dprint-plugin-exec-aarch64-linux-android.zip dprint-plugin-exec
+          echo "ZIP_CHECKSUM=$(shasum -a 256 dprint-plugin-exec-aarch64-linux-android.zip | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+      - name: Pre-release (x86_64-linux-android)
+        id: pre_release_x86_64_linux_android
+        if: 'matrix.config.target == ''x86_64-linux-android'' && startsWith(github.ref, ''refs/tags/'')'
+        run: |-
+          cd target/x86_64-linux-android/release
+          zip -r dprint-plugin-exec-x86_64-linux-android.zip dprint-plugin-exec
+          echo "ZIP_CHECKSUM=$(shasum -a 256 dprint-plugin-exec-x86_64-linux-android.zip | awk '{print $1}')" >> "$GITHUB_OUTPUT"
       - name: Upload artifacts (x86_64-apple-darwin)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: 'matrix.config.target == ''x86_64-apple-darwin'' && startsWith(github.ref, ''refs/tags/'')'
@@ -325,6 +351,18 @@ jobs:
         with:
           name: powerpc64le-unknown-linux-musl-artifacts
           path: target/powerpc64le-unknown-linux-musl/release/dprint-plugin-exec-powerpc64le-unknown-linux-musl.zip
+      - name: Upload artifacts (aarch64-linux-android)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: 'matrix.config.target == ''aarch64-linux-android'' && startsWith(github.ref, ''refs/tags/'')'
+        with:
+          name: aarch64-linux-android-artifacts
+          path: target/aarch64-linux-android/release/dprint-plugin-exec-aarch64-linux-android.zip
+      - name: Upload artifacts (x86_64-linux-android)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: 'matrix.config.target == ''x86_64-linux-android'' && startsWith(github.ref, ''refs/tags/'')'
+        with:
+          name: x86_64-linux-android-artifacts
+          path: target/x86_64-linux-android/release/dprint-plugin-exec-x86_64-linux-android.zip
   draft_release:
     name: draft_release
     needs:
@@ -358,6 +396,8 @@ jobs:
           mv loongarch64-unknown-linux-musl-artifacts/dprint-plugin-exec-loongarch64-unknown-linux-musl.zip .
           mv powerpc64le-unknown-linux-gnu-artifacts/dprint-plugin-exec-powerpc64le-unknown-linux-gnu.zip .
           mv powerpc64le-unknown-linux-musl-artifacts/dprint-plugin-exec-powerpc64le-unknown-linux-musl.zip .
+          mv aarch64-linux-android-artifacts/dprint-plugin-exec-aarch64-linux-android.zip .
+          mv x86_64-linux-android-artifacts/dprint-plugin-exec-x86_64-linux-android.zip .
       - name: Output checksums
         run: |-
           echo "dprint-plugin-exec-x86_64-apple-darwin.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_X86_64_APPLE_DARWIN }}"
@@ -372,6 +412,8 @@ jobs:
           echo "dprint-plugin-exec-loongarch64-unknown-linux-musl.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_LOONGARCH64_UNKNOWN_LINUX_MUSL }}"
           echo "dprint-plugin-exec-powerpc64le-unknown-linux-gnu.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_POWERPC64LE_UNKNOWN_LINUX_GNU }}"
           echo "dprint-plugin-exec-powerpc64le-unknown-linux-musl.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_POWERPC64LE_UNKNOWN_LINUX_MUSL }}"
+          echo "dprint-plugin-exec-aarch64-linux-android.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_AARCH64_LINUX_ANDROID }}"
+          echo "dprint-plugin-exec-x86_64-linux-android.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_X86_64_LINUX_ANDROID }}"
       - name: Create plugin file
         run: deno run --allow-read=. --allow-write=. scripts/create_plugin_file.ts
       - name: Get tag version
@@ -404,6 +446,8 @@ jobs:
             dprint-plugin-exec-loongarch64-unknown-linux-musl.zip
             dprint-plugin-exec-powerpc64le-unknown-linux-gnu.zip
             dprint-plugin-exec-powerpc64le-unknown-linux-musl.zip
+            dprint-plugin-exec-aarch64-linux-android.zip
+            dprint-plugin-exec-x86_64-linux-android.zip
             plugin.json
             deployment/schema.json
           body_path: '${{ github.workspace }}-CHANGELOG.txt'

@@ -69,6 +69,16 @@ const profileDataItems: ProfileData[] = [{
   os: OperatingSystem.Linux,
   target: "powerpc64le-unknown-linux-musl",
   muslCrossImage: "ghcr.io/rust-cross/rust-musl-cross:powerpc64le-musl",
+}, {
+  // android (Termux): built with cross using its built-in NDK image. bionic
+  // libc, so there's only the one variant per arch (no gnu/musl split).
+  os: OperatingSystem.Linux,
+  cross: true,
+  target: "aarch64-linux-android",
+}, {
+  os: OperatingSystem.Linux,
+  cross: true,
+  target: "x86_64-linux-android",
 }];
 
 const profiles = profileDataItems.map((profile) => {

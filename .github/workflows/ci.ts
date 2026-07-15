@@ -19,6 +19,12 @@ interface ProfileData {
    * already bundles the toolchain.
    */
   muslCrossImage?: string;
+  /**
+   * Build the release binary with cargo-zigbuild targeting this glibc version
+   * so the published binary runs on older distros regardless of the runner's
+   * glibc (dprint/dprint#796).
+   */
+  zigbuildGlibc?: string;
 }
 
 const profileDataItems: ProfileData[] = [{
@@ -42,12 +48,15 @@ const profileDataItems: ProfileData[] = [{
   os: OperatingSystem.Linux,
   target: "x86_64-unknown-linux-gnu",
   runTests: true,
+  // glibc 2.17 matches Rust's own minimum for this target (CentOS 7+)
+  zigbuildGlibc: "2.17",
 }, {
   os: OperatingSystem.Linux,
   target: "x86_64-unknown-linux-musl",
 }, {
   os: OperatingSystem.Linux,
   target: "aarch64-unknown-linux-gnu",
+  zigbuildGlibc: "2.17",
 }, {
   os: OperatingSystem.Linux,
   target: "aarch64-unknown-linux-musl",
@@ -102,6 +111,11 @@ const matrix = defineMatrix({
     target: profile.target,
     cross: (profile.cross ?? false).toString(),
     musl_image: profile.muslCrossImage ?? "",
+    zigbuild_glibc: profile.zigbuildGlibc ?? "",
+    // build and test through cargo-zigbuild for zigbuild targets so the test
+    // suite links (and runs) binaries the same way as the published ones
+    cargo: profile.zigbuildGlibc != null ? "cargo-zigbuild" : "cargo",
+    cargo_target: profile.zigbuildGlibc != null ? `${profile.target}.${profile.zigbuildGlibc}` : profile.target,
   })),
 });
 
@@ -117,6 +131,20 @@ const isCross = cross.equals("true");
 const isNotCross = cross.notEquals("true");
 const isMuslImage = muslImage.notEquals("");
 const isNotMuslImage = muslImage.equals("");
+const zigbuildGlibc = expr("matrix.config.zigbuild_glibc");
+const isZigbuild = zigbuildGlibc.notEquals("");
+
+// Verifies the binary only requires symbols up to the targeted glibc version
+// so a too-new requirement never makes it into a release (dprint/dprint#796).
+// readelf is used instead of objdump because it works on foreign-arch ELF
+// files (the aarch64 binary is checked on the x86_64 runner).
+function glibcCheckRun(profileDir: "debug" | "release"): string[] {
+  return [
+    `max_glibc=$(readelf -W --dyn-syms target/${target}/${profileDir}/dprint-plugin-exec | grep -oE 'GLIBC_[0-9]+\\.[0-9]+' | sed 's/GLIBC_//' | sort -uV | tail -1)`,
+    `echo "Binary requires glibc $max_glibc (max allowed: ${zigbuildGlibc})"`,
+    `test "$(printf '%s\\n%s\\n' "$max_glibc" "${zigbuildGlibc}" | sort -V | tail -1)" = "${zigbuildGlibc}"`,
+  ];
+}
 
 const preReleaseSteps = profiles.map((profile) => {
   function getRunSteps() {
@@ -187,13 +215,10 @@ const buildJob = job("build", {
       ],
     },
     {
+      // no cross gcc needed -- zigbuild provides the cross linker
       name: "Setup (Linux aarch64)",
       if: target.equals("aarch64-unknown-linux-gnu"),
-      run: [
-        "sudo apt update",
-        "sudo apt install -y gcc-aarch64-linux-gnu",
-        "rustup target add aarch64-unknown-linux-gnu",
-      ],
+      run: ["rustup target add aarch64-unknown-linux-gnu"],
     },
     {
       name: "Setup (Linux aarch64-musl)",
@@ -216,20 +241,30 @@ const buildJob = job("build", {
         "cargo install cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3",
     },
     {
+      name: "Setup zig",
+      if: isZigbuild,
+      uses: "mlugg/setup-zig@v2",
+      with: { version: "0.15.1" },
+    },
+    {
+      name: "Setup cargo-zigbuild",
+      if: isZigbuild,
+      run: "cargo install cargo-zigbuild --locked --version 0.23.0",
+    },
+    {
       name: "Build (Debug)",
       if: isNotCross.and(isNotMuslImage).and(isNotTag),
-      env: {
-        CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "aarch64-linux-gnu-gcc",
-      },
-      run: "cargo build --locked --all-targets --target ${{matrix.config.target}}",
+      run: "${{matrix.config.cargo}} build --locked --all-targets --target ${{matrix.config.cargo_target}}",
+    },
+    {
+      name: "Check glibc requirement (Debug)",
+      if: isZigbuild.and(isNotTag),
+      run: glibcCheckRun("debug"),
     },
     {
       name: "Build release",
       if: isNotCross.and(isNotMuslImage).and(isTag),
-      env: {
-        CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "aarch64-linux-gnu-gcc",
-      },
-      run: "cargo build --locked --all-targets --target ${{matrix.config.target}} --release",
+      run: "${{matrix.config.cargo}} build --locked --all-targets --target ${{matrix.config.cargo_target}} --release",
     },
     {
       name: "Build cross (Debug)",
@@ -280,12 +315,19 @@ const buildJob = job("build", {
     {
       name: "Test (Debug)",
       if: runTests.equals("true").and(isNotTag),
-      run: "cargo test --locked --all-features",
+      run: "${{matrix.config.cargo}} test --locked --target ${{matrix.config.cargo_target}} --all-features",
     },
     {
       name: "Test (Release)",
       if: runTests.equals("true").and(isTag),
-      run: "cargo test --locked --all-features --release",
+      run: "${{matrix.config.cargo}} test --locked --target ${{matrix.config.cargo_target}} --all-features --release",
+    },
+    {
+      // runs after the tests so this checks the exact binary that gets zipped,
+      // even if a test step rebuilds it
+      name: "Check glibc requirement (Release)",
+      if: isZigbuild.and(isTag),
+      run: glibcCheckRun("release"),
     },
     ...preReleaseSteps,
     ...profiles.map((profile) => ({

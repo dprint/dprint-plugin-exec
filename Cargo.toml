@@ -18,7 +18,7 @@ overflow-checks = false
 panic = "abort"
 
 [dependencies]
-dprint-core = { version = "0.69.0", features = ["process"] }
+dprint-core = { version = "0.69.1", features = ["process"] }
 globset = "0.4.14"
 handlebars = "5.1.2"
 serde = { version = "1.0.204", features = ["derive"] }

@@ -18,8 +18,7 @@ overflow-checks = false
 panic = "abort"
 
 [dependencies]
-anyhow = "1.0.86"
-dprint-core = { version = "0.67.0", features = ["process"] }
+dprint-core = { version = "0.69.0", features = ["process"] }
 globset = "0.4.14"
 handlebars = "5.1.2"
 serde = { version = "1.0.204", features = ["derive"] }
@@ -28,6 +27,6 @@ splitty = "1.0.1"
 tokio = { version = "1.38.0", features = ["time"] }
 
 [dev-dependencies]
-dprint-development = "0.10.1"
+dprint-development = "0.11.0"
 pretty_assertions = "1.4.0"
 serde_json = "1.0.120"

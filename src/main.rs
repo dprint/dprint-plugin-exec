@@ -1,10 +1,10 @@
-use anyhow::Result;
+use dprint_core::plugins::FormatError;
 use dprint_core::plugins::process::get_parent_process_id_from_cli_args;
 use dprint_core::plugins::process::handle_process_stdio_messages;
 use dprint_core::plugins::process::start_parent_process_checker_task;
 use dprint_plugin_exec::handler::ExecHandler;
 
-fn main() -> Result<()> {
+fn main() -> Result<(), FormatError> {
   let rt = tokio::runtime::Builder::new_current_thread()
     .enable_time()
     .build()

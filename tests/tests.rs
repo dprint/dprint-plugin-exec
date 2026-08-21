@@ -53,6 +53,7 @@ fn test_specs() {
         )
         .await
         .map(|maybe_bytes| maybe_bytes.map(|bytes| String::from_utf8(bytes).unwrap()))
+        .map_err(Into::into)
       })
     }),
     Arc::new(move |_file_name, _file_text, _spec_config| panic!("Not supported.")),

@@ -13,10 +13,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Error;
-use anyhow::Result;
-use anyhow::anyhow;
-use anyhow::bail;
 use dprint_core::async_runtime::LocalBoxFuture;
 use dprint_core::async_runtime::async_trait;
 use dprint_core::configuration::ConfigKeyMap;
@@ -24,6 +20,7 @@ use dprint_core::configuration::GlobalConfiguration;
 use dprint_core::plugins::AsyncPluginHandler;
 use dprint_core::plugins::CancellationToken;
 use dprint_core::plugins::FileMatchingInfo;
+use dprint_core::plugins::FormatError;
 use dprint_core::plugins::FormatRequest;
 use dprint_core::plugins::FormatResult;
 use dprint_core::plugins::HostFormatRequest;
@@ -199,7 +196,7 @@ pub async fn format_bytes(
         .stderr(Stdio::piped())
         .args(args)
         .spawn()
-        .map_err(|e| anyhow!("Cannot start formatter process: {}", e))?,
+        .map_err(|e| FormatError::new(format!("Cannot start formatter process: {}", e)))?,
     );
 
     // capturing stdout
@@ -211,7 +208,9 @@ pub async fn format_bytes(
       }));
     } else {
       let _ = child.kill();
-      return Err(anyhow!("Formatter did not have a handle for stdout"));
+      return Err(FormatError::new(
+        "Formatter did not have a handle for stdout",
+      ));
     }
 
     // capturing stderr
@@ -228,25 +227,25 @@ pub async fn format_bytes(
         .stdin
         .take()
         .ok_or_else(|| {
-          anyhow!(
+          FormatError::new(
             "Cannot open the command's stdin. Perhaps you meant to set the command's \"stdin\" configuration to false?",
           )
         })?;
       let file_bytes = file_bytes.into_owned();
       dprint_core::async_runtime::spawn_blocking(move || {
-        stdin
-          .write_all(&file_bytes)
-          .map_err(|err| anyhow!("Cannot write into the command's stdin. {}", err))
+        stdin.write_all(&file_bytes).map_err(|err| {
+          FormatError::new(format!("Cannot write into the command's stdin. {}", err))
+        })
       })
       .await??;
     }
 
     let child_completed = dprint_core::async_runtime::spawn_blocking(move || match child.wait() {
       Ok(status) => Ok(status),
-      Err(e) => Err(anyhow!(
+      Err(e) => Err(FormatError::new(format!(
         "Error while waiting for formatter to complete: {}",
         e
-      )),
+      ))),
     });
 
     let result_future = async {
@@ -258,7 +257,7 @@ pub async fn format_bytes(
       for handle_result in handle_results {
         handle_result??; // surface any errors capturing
       }
-      Ok::<_, Error>((output, exit_status))
+      Ok::<_, FormatError>((output, exit_status))
     };
 
     tokio::select! {
@@ -283,13 +282,13 @@ pub async fn format_bytes(
     && trim_bytes_len(&file_bytes) == 0
   {
     // prevent someone formatting all their files to empty files
-    bail!(
+    return Err(FormatError::new(format!(
       concat!(
         "The original file text was greater than {} characters, but the formatted text was empty. ",
         "Perhaps dprint-plugin-exec has been misconfigured?",
       ),
       MIN_CHARS_TO_EMPTY
-    )
+    )));
   } else {
     Some(file_bytes.into_owned())
   })
@@ -298,9 +297,11 @@ pub async fn format_bytes(
 fn select_commands<'a>(
   config: &'a Configuration,
   file_path: &Path,
-) -> Result<Vec<&'a CommandConfiguration>> {
+) -> Result<Vec<&'a CommandConfiguration>, FormatError> {
   if !config.is_valid {
-    bail!("Cannot format because the configuration was not valid.");
+    return Err(FormatError::new(
+      "Cannot format because the configuration was not valid.",
+    ));
   }
 
   let mut binaries = Vec::new();
@@ -323,11 +324,11 @@ async fn handle_child_exit_status(
   ok_text: Vec<u8>,
   err_rx: Receiver<Vec<u8>>,
   exit_status: ExitStatus,
-) -> Result<Vec<u8>, Error> {
+) -> Result<Vec<u8>, FormatError> {
   if exit_status.success() {
     return Ok(ok_text);
   }
-  Err(anyhow!(
+  Err(FormatError::new(format!(
     "Child process exited with code {}: {}",
     exit_status.code().unwrap(),
     String::from_utf8_lossy(
@@ -335,14 +336,14 @@ async fn handle_child_exit_status(
         .await
         .expect("Could not propagate error message from child process")
     )
-  ))
+  )))
 }
 
-fn timeout_err(config: &Configuration) -> Error {
-  anyhow!(
+fn timeout_err(config: &Configuration) -> FormatError {
+  FormatError::new(format!(
     "Child process has not returned a result within {} seconds.",
     config.timeout,
-  )
+  ))
 }
 
 /// Remembers which setup commands have already been run so that a command's
@@ -360,7 +361,7 @@ enum SetupRun {
 
 enum SetupInitError {
   Cancelled,
-  Failed(Error),
+  Failed(FormatError),
 }
 
 impl SetupState {
@@ -369,7 +370,7 @@ impl SetupState {
     cwd: &Path,
     setup_command: &SetupCommand,
     token: &Arc<dyn CancellationToken>,
-  ) -> Result<SetupRun> {
+  ) -> Result<SetupRun, FormatError> {
     // the cwd is part of the key because the same command run in different
     // directories may produce different results
     let key = format!(
@@ -410,7 +411,12 @@ async fn run_setup_command(
       .stderr(Stdio::piped())
       .args(&setup_command.args)
       .spawn()
-      .map_err(|e| SetupInitError::Failed(anyhow!("Cannot start setup command process: {}", e)))?,
+      .map_err(|e| {
+        SetupInitError::Failed(FormatError::new(format!(
+          "Cannot start setup command process: {}",
+          e
+        )))
+      })?,
   );
 
   // capture stderr to surface it if the command fails
@@ -423,9 +429,12 @@ async fn run_setup_command(
   }
 
   let child_completed = dprint_core::async_runtime::spawn_blocking(move || {
-    child
-      .wait()
-      .map_err(|e| anyhow!("Error while waiting for setup command to complete: {}", e))
+    child.wait().map_err(|e| {
+      FormatError::new(format!(
+        "Error while waiting for setup command to complete: {}",
+        e
+      ))
+    })
   });
 
   let result_future = async {
@@ -435,14 +444,14 @@ async fn run_setup_command(
     for handle_result in handle_results {
       handle_result??; // surface any errors capturing
     }
-    Ok::<_, Error>(exit_status)
+    Ok::<_, FormatError>(exit_status)
   };
 
   tokio::select! {
     _ = token.wait_cancellation() => Err(SetupInitError::Cancelled),
     result = result_future => match result {
       Ok(exit_status) if exit_status.success() => Ok(()),
-      Ok(exit_status) => Err(SetupInitError::Failed(anyhow!(
+      Ok(exit_status) => Err(SetupInitError::Failed(FormatError::new(format!(
         "Setup command '{}' exited with code {}: {}",
         setup_command.executable,
         exit_status
@@ -450,13 +459,13 @@ async fn run_setup_command(
           .map(|code| code.to_string())
           .unwrap_or_else(|| "unknown".to_string()),
         String::from_utf8_lossy(&err_rx.await.unwrap_or_default())
-      ))),
+      )))),
       Err(err) => Err(SetupInitError::Failed(err)),
     }
   }
 }
 
-fn read_stream_lines<R>(mut readable: R, sender: Sender<Vec<u8>>) -> Result<(), Error>
+fn read_stream_lines<R>(mut readable: R, sender: Sender<Vec<u8>>) -> Result<(), FormatError>
 where
   R: std::io::Read + Unpin,
 {

@@ -115,7 +115,9 @@ const matrix = defineMatrix({
     // build and test through cargo-zigbuild for zigbuild targets so the test
     // suite links (and runs) binaries the same way as the published ones
     cargo: profile.zigbuildGlibc != null ? "cargo-zigbuild" : "cargo",
-    cargo_target: profile.zigbuildGlibc != null ? `${profile.target}.${profile.zigbuildGlibc}` : profile.target,
+    cargo_target: profile.zigbuildGlibc != null
+      ? `${profile.target}.${profile.zigbuildGlibc}`
+      : profile.target,
   })),
 });
 
@@ -254,7 +256,8 @@ const buildJob = job("build", {
     {
       name: "Build (Debug)",
       if: isNotCross.and(isNotMuslImage).and(isNotTag),
-      run: "${{matrix.config.cargo}} build --locked --all-targets --target ${{matrix.config.cargo_target}}",
+      run:
+        "${{matrix.config.cargo}} build --locked --all-targets --target ${{matrix.config.cargo_target}}",
     },
     {
       name: "Check glibc requirement (Debug)",
@@ -264,7 +267,8 @@ const buildJob = job("build", {
     {
       name: "Build release",
       if: isNotCross.and(isNotMuslImage).and(isTag),
-      run: "${{matrix.config.cargo}} build --locked --all-targets --target ${{matrix.config.cargo_target}} --release",
+      run:
+        "${{matrix.config.cargo}} build --locked --all-targets --target ${{matrix.config.cargo_target}} --release",
     },
     {
       name: "Build cross (Debug)",
@@ -315,12 +319,14 @@ const buildJob = job("build", {
     {
       name: "Test (Debug)",
       if: runTests.equals("true").and(isNotTag),
-      run: "${{matrix.config.cargo}} test --locked --target ${{matrix.config.cargo_target}} --all-features",
+      run:
+        "${{matrix.config.cargo}} test --locked --target ${{matrix.config.cargo_target}} --all-features",
     },
     {
       name: "Test (Release)",
       if: runTests.equals("true").and(isTag),
-      run: "${{matrix.config.cargo}} test --locked --target ${{matrix.config.cargo_target}} --all-features --release",
+      run:
+        "${{matrix.config.cargo}} test --locked --target ${{matrix.config.cargo_target}} --all-features --release",
     },
     {
       // runs after the tests so this checks the exact binary that gets zipped,
@@ -347,13 +353,6 @@ const getTagVersion = step({
   name: "Get tag version",
   run: "echo \"TAG_VERSION=${GITHUB_REF/refs\\/tags\\//}\" >> \"$GITHUB_OUTPUT\"",
   outputs: ["TAG_VERSION"],
-});
-
-const getPluginFileChecksum = step({
-  id: "get_plugin_file_checksum",
-  name: "Get plugin file checksum",
-  run: `echo "CHECKSUM=$(shasum -a 256 plugin.json | awk '{print $1}')" >> "$GITHUB_OUTPUT"`,
-  outputs: ["CHECKSUM"],
 });
 
 const draftReleaseJob = job("draft_release", {
@@ -386,22 +385,19 @@ const draftReleaseJob = job("draft_release", {
       run: "deno run --allow-read=. --allow-write=. scripts/create_plugin_file.ts",
     },
     getTagVersion,
-    getPluginFileChecksum,
     {
       name: "Update Config Schema Version",
       run:
         `sed -i 's/exec\\/0.0.0/exec\\/${getTagVersion.outputs.TAG_VERSION}/' deployment/schema.json`,
     },
     {
-      // must run before "Create release notes" — the notes embed the main
-      // npm tarball's sha256 from npm-dist/publish-manifest.json.
       name: "Build npm packages",
       run: "deno run -A scripts/create_npm_packages.ts",
     },
     {
       name: "Create release notes",
       run:
-        `deno run -A ./scripts/generate_release_notes.ts ${getTagVersion.outputs.TAG_VERSION} ${getPluginFileChecksum.outputs.CHECKSUM} > \${{ github.workspace }}-CHANGELOG.txt`,
+        `deno run -A ./scripts/generate_release_notes.ts ${getTagVersion.outputs.TAG_VERSION} > \${{ github.workspace }}-CHANGELOG.txt`,
     },
     {
       name: "Release",

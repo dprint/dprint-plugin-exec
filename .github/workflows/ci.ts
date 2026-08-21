@@ -115,7 +115,9 @@ const matrix = defineMatrix({
     // build and test through cargo-zigbuild for zigbuild targets so the test
     // suite links (and runs) binaries the same way as the published ones
     cargo: profile.zigbuildGlibc != null ? "cargo-zigbuild" : "cargo",
-    cargo_target: profile.zigbuildGlibc != null ? `${profile.target}.${profile.zigbuildGlibc}` : profile.target,
+    cargo_target: profile.zigbuildGlibc != null
+      ? `${profile.target}.${profile.zigbuildGlibc}`
+      : profile.target,
   })),
 });
 
@@ -254,7 +256,8 @@ const buildJob = job("build", {
     {
       name: "Build (Debug)",
       if: isNotCross.and(isNotMuslImage).and(isNotTag),
-      run: "${{matrix.config.cargo}} build --locked --all-targets --target ${{matrix.config.cargo_target}}",
+      run:
+        "${{matrix.config.cargo}} build --locked --all-targets --target ${{matrix.config.cargo_target}}",
     },
     {
       name: "Check glibc requirement (Debug)",
@@ -264,7 +267,8 @@ const buildJob = job("build", {
     {
       name: "Build release",
       if: isNotCross.and(isNotMuslImage).and(isTag),
-      run: "${{matrix.config.cargo}} build --locked --all-targets --target ${{matrix.config.cargo_target}} --release",
+      run:
+        "${{matrix.config.cargo}} build --locked --all-targets --target ${{matrix.config.cargo_target}} --release",
     },
     {
       name: "Build cross (Debug)",
@@ -315,12 +319,14 @@ const buildJob = job("build", {
     {
       name: "Test (Debug)",
       if: runTests.equals("true").and(isNotTag),
-      run: "${{matrix.config.cargo}} test --locked --target ${{matrix.config.cargo_target}} --all-features",
+      run:
+        "${{matrix.config.cargo}} test --locked --target ${{matrix.config.cargo_target}} --all-features",
     },
     {
       name: "Test (Release)",
       if: runTests.equals("true").and(isTag),
-      run: "${{matrix.config.cargo}} test --locked --target ${{matrix.config.cargo_target}} --all-features --release",
+      run:
+        "${{matrix.config.cargo}} test --locked --target ${{matrix.config.cargo_target}} --all-features --release",
     },
     {
       // runs after the tests so this checks the exact binary that gets zipped,

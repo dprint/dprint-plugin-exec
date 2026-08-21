@@ -3,25 +3,17 @@ import { generateChangeLog } from "jsr:@dprint/automation@0.11.2";
 const version = Deno.args[0];
 const checksum = Deno.args[1];
 
-// optional npm install block; only emitted if create_npm_packages.ts has
-// run and produced a manifest with the main package's tarball checksum.
-let npmBlock = "";
+// prefer the npm specifier, which is what `dprint add` outputs. it's only
+// available once create_npm_packages.ts has run and produced a manifest with
+// the main package's tarball checksum, so fall back to the plugin url.
+let pluginSpecifier = `https://plugins.dprint.dev/exec-${version}.json@${checksum}`;
 try {
   const manifest = JSON.parse(await Deno.readTextFile("npm-dist/publish-manifest.json")) as {
     mainPackageName: string;
     mainPackageChecksum: string;
   };
-  npmBlock = `
-    Alternatively, run \`dprint add npm:${manifest.mainPackageName}\`, which will update the config file as follows:
-    \`\`\`jsonc
-    {
-      // etc...
-      "plugins": [
-        "npm:${manifest.mainPackageName}@${version}/plugin.json@${manifest.mainPackageChecksum}"
-      ]
-    }
-    \`\`\`
-`;
+  pluginSpecifier =
+    `npm:${manifest.mainPackageName}@${version}/plugin.json@${manifest.mainPackageChecksum}`;
 } catch (err) {
   if (!(err instanceof Deno.errors.NotFound)) throw err;
 }
@@ -47,11 +39,11 @@ Then:
     {
       // etc...
       "plugins": [
-        "https://plugins.dprint.dev/exec-${version}.json@${checksum}"
+        "${pluginSpecifier}"
       ]
     }
     \`\`\`
-${npmBlock}2. Follow the configuration setup instructions found at https://github.com/dprint/dprint-plugin-exec#configuration
+2. Follow the configuration setup instructions found at https://github.com/dprint/dprint-plugin-exec#configuration
 `;
 
 console.log(text);

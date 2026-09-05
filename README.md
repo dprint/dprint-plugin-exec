@@ -1,5 +1,7 @@
 # dprint-plugin-exec
 
+[![npm version](https://img.shields.io/npm/v/@dprint/exec.svg)](https://www.npmjs.com/package/@dprint/exec)
+
 Plugin that formats code via mostly any formatting CLI found on the host machine.
 
 This plugin executes CLI commands to format code via stdin (recommended) or via a file path.

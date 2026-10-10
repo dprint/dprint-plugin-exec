@@ -111,7 +111,7 @@ const profileDataItems: ProfileData[] = [{
   target: "x86_64-unknown-freebsd",
 }, {
   // aarch64 freebsd is a tier 3 Rust target with no prebuilt std, so cross
-  // builds std from source (see Cross.toml and the build-std setup step).
+  // builds std from source (see the build-std setup step).
   os: OperatingSystem.Linux,
   cross: true,
   target: "aarch64-unknown-freebsd",
@@ -265,11 +265,21 @@ const buildJob = job("build", {
         "cargo install cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3",
     },
     {
-      // -Zbuild-std is nightly only, so allow it on the pinned stable toolchain
-      // in order to build with the same compiler as every other target
+      // aarch64 freebsd has no prebuilt std, so have cross build it from source.
+      // -Zbuild-std is nightly only, so RUSTC_BOOTSTRAP allows it on the pinned
+      // stable toolchain in order to build with the same compiler as every other
+      // target. cross refuses build-std on a non-nightly rustup toolchain, so
+      // it's told the toolchain is custom, which means it won't install
+      // rust-src itself.
       name: "Setup build-std (aarch64 FreeBSD)",
       if: target.equals("aarch64-unknown-freebsd"),
-      run: `echo "RUSTC_BOOTSTRAP=1" >> "$GITHUB_ENV"`,
+      run: [
+        "rustup component add rust-src",
+        `echo "RUSTC_BOOTSTRAP=1" >> "$GITHUB_ENV"`,
+        `echo "CROSS_CUSTOM_TOOLCHAIN=1" >> "$GITHUB_ENV"`,
+        `echo "CROSS_BUILD_STD=true" >> "$GITHUB_ENV"`,
+        `echo "CROSS_BUILD_ENV_PASSTHROUGH=RUSTC_BOOTSTRAP" >> "$GITHUB_ENV"`,
+      ],
     },
     {
       name: "Setup zig",

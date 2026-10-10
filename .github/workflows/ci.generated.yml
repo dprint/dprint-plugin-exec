@@ -231,7 +231,12 @@ jobs:
         run: 'cargo install cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3'
       - name: Setup build-std (aarch64 FreeBSD)
         if: matrix.config.target == 'aarch64-unknown-freebsd'
-        run: echo "RUSTC_BOOTSTRAP=1" >> "$GITHUB_ENV"
+        run: |-
+          rustup component add rust-src
+          echo "RUSTC_BOOTSTRAP=1" >> "$GITHUB_ENV"
+          echo "CROSS_CUSTOM_TOOLCHAIN=1" >> "$GITHUB_ENV"
+          echo "CROSS_BUILD_STD=true" >> "$GITHUB_ENV"
+          echo "CROSS_BUILD_ENV_PASSTHROUGH=RUSTC_BOOTSTRAP" >> "$GITHUB_ENV"
       - name: Setup zig
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         if: matrix.config.zigbuild_glibc != ''

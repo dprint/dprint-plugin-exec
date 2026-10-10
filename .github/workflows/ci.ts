@@ -277,7 +277,8 @@ const buildJob = job("build", {
         "rustup component add rust-src",
         `echo "RUSTC_BOOTSTRAP=1" >> "$GITHUB_ENV"`,
         `echo "CROSS_CUSTOM_TOOLCHAIN=1" >> "$GITHUB_ENV"`,
-        `echo "CROSS_BUILD_STD=true" >> "$GITHUB_ENV"`,
+        // panic_abort is needed because the release profile uses panic = "abort"
+        `echo "CROSS_BUILD_STD=std,panic_abort" >> "$GITHUB_ENV"`,
         `echo "CROSS_BUILD_ENV_PASSTHROUGH=RUSTC_BOOTSTRAP" >> "$GITHUB_ENV"`,
       ],
     },

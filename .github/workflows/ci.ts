@@ -15,7 +15,7 @@ interface ProfileData {
   runTests?: boolean;
   /**
    * Build by running cargo directly inside this Docker image. Used for targets
-   * cross doesn't provide an image for (e.g. powerpc64le musl), where the image
+   * cross doesn't provide an image for (e.g. riscv64gc/powerpc64le musl), where the image
    * already bundles the toolchain.
    */
   muslCrossImage?: string;
@@ -65,6 +65,12 @@ const profileDataItems: ProfileData[] = [{
   cross: true,
   target: "riscv64gc-unknown-linux-gnu",
 }, {
+  // cross has no riscv64gc musl image, so build directly in the prebuilt
+  // rust-musl-cross toolchain image instead (see the "Build musl image" steps).
+  os: OperatingSystem.Linux,
+  target: "riscv64gc-unknown-linux-musl",
+  muslCrossImage: "ghcr.io/rust-cross/rust-musl-cross:riscv64gc-musl",
+}, {
   os: OperatingSystem.Linux,
   cross: true,
   target: "loongarch64-unknown-linux-gnu",
@@ -93,6 +99,22 @@ const profileDataItems: ProfileData[] = [{
   os: OperatingSystem.Linux,
   cross: true,
   target: "x86_64-linux-android",
+}, {
+  // s390x (IBM Z): built with cross, which provides an image for this target.
+  os: OperatingSystem.Linux,
+  cross: true,
+  target: "s390x-unknown-linux-gnu",
+}, {
+  // freebsd: built with cross against its FreeBSD 13 sysroot.
+  os: OperatingSystem.Linux,
+  cross: true,
+  target: "x86_64-unknown-freebsd",
+}, {
+  // aarch64 freebsd is a tier 3 Rust target with no prebuilt std, so cross
+  // builds std from source (see Cross.toml and the build-std setup step).
+  os: OperatingSystem.Linux,
+  cross: true,
+  target: "aarch64-unknown-freebsd",
 }];
 
 const profiles = profileDataItems.map((profile) => {
@@ -241,6 +263,13 @@ const buildJob = job("build", {
       if: isCross,
       run:
         "cargo install cross --git https://github.com/cross-rs/cross --rev 4090beca3cfffa44371a5bba524de3a578aa46c3",
+    },
+    {
+      // -Zbuild-std is nightly only, so allow it on the pinned stable toolchain
+      // in order to build with the same compiler as every other target
+      name: "Setup build-std (aarch64 FreeBSD)",
+      if: target.equals("aarch64-unknown-freebsd"),
+      run: `echo "RUSTC_BOOTSTRAP=1" >> "$GITHUB_ENV"`,
     },
     {
       name: "Setup zig",

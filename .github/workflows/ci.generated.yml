@@ -600,14 +600,14 @@ jobs:
           echo "dprint-plugin-exec-x86_64-unknown-freebsd.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_X86_64_UNKNOWN_FREEBSD }}"
           echo "dprint-plugin-exec-aarch64-unknown-freebsd.zip: ${{ needs.build.outputs.ZIP_CHECKSUM_AARCH64_UNKNOWN_FREEBSD }}"
       - name: Create plugin file
-        run: deno run --allow-read=. --allow-write=. scripts/create_plugin_file.ts
+        run: deno run --minimum-dependency-age=0 --allow-read=. --allow-write=. scripts/create_plugin_file.ts
       - name: Get tag version
         id: get_tag_version
         run: 'echo "TAG_VERSION=${GITHUB_REF/refs\/tags\//}" >> "$GITHUB_OUTPUT"'
       - name: Update Config Schema Version
         run: 'sed -i ''s/exec\/0.0.0/exec\/${{ steps.get_tag_version.outputs.TAG_VERSION }}/'' deployment/schema.json'
       - name: Build npm packages
-        run: deno run -A scripts/create_npm_packages.ts
+        run: deno run --minimum-dependency-age=0 -A scripts/create_npm_packages.ts
       - name: Create release notes
         run: 'deno run -A ./scripts/generate_release_notes.ts ${{ steps.get_tag_version.outputs.TAG_VERSION }} > ${{ github.workspace }}-CHANGELOG.txt'
       - name: Release

@@ -422,7 +422,7 @@ const draftReleaseJob = job("draft_release", {
     },
     {
       name: "Create plugin file",
-      run: "deno run --allow-read=. --allow-write=. scripts/create_plugin_file.ts",
+      run: "deno run --minimum-dependency-age=0 --allow-read=. --allow-write=. scripts/create_plugin_file.ts",
     },
     getTagVersion,
     {
@@ -432,7 +432,7 @@ const draftReleaseJob = job("draft_release", {
     },
     {
       name: "Build npm packages",
-      run: "deno run -A scripts/create_npm_packages.ts",
+      run: "deno run --minimum-dependency-age=0 -A scripts/create_npm_packages.ts",
     },
     {
       name: "Create release notes",

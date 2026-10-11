@@ -520,6 +520,7 @@ fn maybe_substitute_variables(
   #[derive(Clone, Serialize, Deserialize)]
   struct TemplateVariables {
     file_path: String,
+    file_path_with_ext: String,
     ext: String,
     line_width: u32,
     use_tabs: bool,
@@ -530,6 +531,7 @@ fn maybe_substitute_variables(
 
   let vars = TemplateVariables {
     file_path: real_file_path.to_string_lossy().to_string(),
+    file_path_with_ext: file_path.to_string_lossy().to_string(),
     // the extension comes from the path dprint provided because that
     // has the extension of a file dprint matched by its shebang
     ext: file_path
@@ -578,6 +580,9 @@ mod test {
         "command": "deno eval console.log(Deno.args[0]) ext:{{ext}}",
         "exts": ["ps1"]
       }, {
+        "command": "deno eval console.log(Deno.args[0]) {{file_path_with_ext}}",
+        "exts": ["bat"]
+      }, {
         "command": "deno eval console.log(Deno.args[0]) ext:{{ext}}",
         "fileNames": ["makefile"]
       }]
@@ -618,6 +623,12 @@ mod test {
     );
     assert_eq!(format("scripts/build.ps1").await, "ext:ps1\n");
     assert_eq!(format("scripts/makefile").await, "ext:\n");
+    // the path dprint provided
+    assert_eq!(
+      format("scripts/build.dprint-ext-added.bat").await,
+      "scripts/build.dprint-ext-added.bat\n"
+    );
+    assert_eq!(format("scripts/build.bat").await, "scripts/build.bat\n");
   }
 
   #[test]

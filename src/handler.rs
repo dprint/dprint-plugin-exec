@@ -168,8 +168,12 @@ pub async fn format_bytes(
     if end < start { 0 } else { end - start }
   }
 
+  // dprint gives the file path with an extension for an extensionless file
+  // it matched by its shebang, so use that for selecting the commands by
+  // extension and the path of the file on disk for everything else
+  let real_file_path = get_real_file_path(&file_path);
   let mut file_bytes: Cow<Vec<u8>> = Cow::Borrowed(&original_file_bytes);
-  for command in select_commands(&config, &file_path)? {
+  for command in select_commands(&config, &file_path, &real_file_path)? {
     // run the command's setup once before formatting with it for the first time
     if let Some(setup_command) = &command.setup_command {
       match setup_state
@@ -182,7 +186,7 @@ pub async fn format_bytes(
     }
 
     // format here
-    let args = maybe_substitute_variables(&file_path, &config, command);
+    let args = maybe_substitute_variables(&file_path, &real_file_path, &config, command);
 
     let mut child = ChildKillOnDrop(
       Command::new(&command.executable)
@@ -297,6 +301,7 @@ pub async fn format_bytes(
 fn select_commands<'a>(
   config: &'a Configuration,
   file_path: &Path,
+  real_file_path: &Path,
 ) -> Result<Vec<&'a CommandConfiguration>, FormatError> {
   if !config.is_valid {
     return Err(FormatError::new(
@@ -308,7 +313,7 @@ fn select_commands<'a>(
 
   for command in &config.commands {
     if let Some(associations) = &command.associations {
-      if associations.is_match(file_path) {
+      if associations.is_match(real_file_path) {
         binaries.push(command);
       }
     } else if binaries.is_empty() && command.matches_exts_or_filenames(file_path) {
@@ -318,6 +323,34 @@ fn select_commands<'a>(
   }
 
   Ok(binaries)
+}
+
+/// Gets the path of the file on disk from the file path dprint provided.
+///
+/// dprint adds a marker and an extension to the path of an extensionless file
+/// that it matched by its shebang (ex. `build.dprint-ext-added.sh` for a file
+/// named `build`).
+fn get_real_file_path(file_path: &Path) -> Cow<'_, Path> {
+  const EXT_ADDED_MARKER: &str = ".dprint-ext-added.";
+  let Some(path_text) = file_path.to_str() else {
+    return Cow::Borrowed(file_path);
+  };
+  let Some(index) = path_text.rfind(EXT_ADDED_MARKER) else {
+    return Cow::Borrowed(file_path);
+  };
+  // the marker and extension are at the end of the file name
+  let extension = &path_text[index + EXT_ADDED_MARKER.len()..];
+  let has_file_name = path_text[..index]
+    .chars()
+    .next_back()
+    .is_some_and(|c| !std::path::is_separator(c));
+  if !has_file_name
+    || extension.is_empty()
+    || extension.contains(|c| c == '.' || std::path::is_separator(c))
+  {
+    return Cow::Borrowed(file_path);
+  }
+  Cow::Owned(PathBuf::from(&path_text[..index]))
 }
 
 async fn handle_child_exit_status(
@@ -477,6 +510,7 @@ where
 
 fn maybe_substitute_variables(
   file_path: &Path,
+  real_file_path: &Path,
   config: &Configuration,
   command: &CommandConfiguration,
 ) -> Vec<String> {
@@ -486,6 +520,7 @@ fn maybe_substitute_variables(
   #[derive(Clone, Serialize, Deserialize)]
   struct TemplateVariables {
     file_path: String,
+    ext: String,
     line_width: u32,
     use_tabs: bool,
     indent_width: u8,
@@ -494,7 +529,13 @@ fn maybe_substitute_variables(
   }
 
   let vars = TemplateVariables {
-    file_path: file_path.to_string_lossy().to_string(),
+    file_path: real_file_path.to_string_lossy().to_string(),
+    // the extension comes from the path dprint provided because that
+    // has the extension of a file dprint matched by its shebang
+    ext: file_path
+      .extension()
+      .map(|ext| ext.to_string_lossy().to_string())
+      .unwrap_or_default(),
     line_width: config.line_width,
     use_tabs: config.use_tabs,
     indent_width: config.indent_width,
@@ -520,8 +561,97 @@ mod test {
   use dprint_core::plugins::NullCancellationToken;
 
   use super::SetupState;
+  use super::get_real_file_path;
   use crate::configuration::Configuration;
   use crate::format_bytes;
+
+  #[tokio::test]
+  async fn should_use_real_file_path_for_file_matched_by_shebang() {
+    let unresolved_config = r#"{
+      "commands": [{
+        "command": "deno eval console.log(Deno.args[0]) {{file_path}}",
+        "exts": ["sh"]
+      }, {
+        "command": "deno eval console.log(Deno.args[0]+Deno.args[1]) association: {{file_path}}",
+        "associations": "**/deploy"
+      }, {
+        "command": "deno eval console.log(Deno.args[0]) ext:{{ext}}",
+        "exts": ["ps1"]
+      }, {
+        "command": "deno eval console.log(Deno.args[0]) ext:{{ext}}",
+        "fileNames": ["makefile"]
+      }]
+    }"#;
+    let unresolved_config = serde_json::from_str(unresolved_config).unwrap();
+    let config = Arc::new(Configuration::resolve(unresolved_config, &Default::default()).config);
+    let format = |file_path: &str| {
+      let config = config.clone();
+      let file_path = PathBuf::from(file_path);
+      async move {
+        let result = format_bytes(
+          file_path,
+          "#!/bin/sh\ntext".to_string().into_bytes(),
+          config,
+          Arc::new(NullCancellationToken),
+          &SetupState::default(),
+        )
+        .await;
+        String::from_utf8(result.unwrap().unwrap()).unwrap()
+      }
+    };
+
+    // matched by the extension and given the path of the file on disk
+    assert_eq!(
+      format("scripts/build.dprint-ext-added.sh").await,
+      "scripts/build\n"
+    );
+    assert_eq!(format("scripts/build.sh").await, "scripts/build.sh\n");
+    // the associations are matched against the path of the file on disk
+    assert_eq!(
+      format("scripts/deploy.dprint-ext-added.txt").await,
+      "association:scripts/deploy\n"
+    );
+    // the extension is the one dprint provided
+    assert_eq!(
+      format("scripts/build.dprint-ext-added.ps1").await,
+      "ext:ps1\n"
+    );
+    assert_eq!(format("scripts/build.ps1").await, "ext:ps1\n");
+    assert_eq!(format("scripts/makefile").await, "ext:\n");
+  }
+
+  #[test]
+  fn real_file_path() {
+    fn get(path: &str) -> String {
+      get_real_file_path(std::path::Path::new(path))
+        .to_string_lossy()
+        .to_string()
+    }
+
+    assert_eq!(get("/scripts/build.dprint-ext-added.sh"), "/scripts/build");
+    assert_eq!(get("./build.dprint-ext-added.sh"), "./build");
+    assert_eq!(get("/.envrc.dprint-ext-added.sh"), "/.envrc");
+    assert_eq!(get("/scripts/build"), "/scripts/build");
+    assert_eq!(get("/scripts/build.sh"), "/scripts/build.sh");
+    // not at the end of the file name
+    assert_eq!(
+      get("/scripts/build.dprint-ext-added.sh.txt"),
+      "/scripts/build.dprint-ext-added.sh.txt"
+    );
+    assert_eq!(
+      get("/scripts/build.dprint-ext-added.sh/file"),
+      "/scripts/build.dprint-ext-added.sh/file"
+    );
+    assert_eq!(
+      get("/scripts/build.dprint-ext-added."),
+      "/scripts/build.dprint-ext-added."
+    );
+    // no file name before it
+    assert_eq!(
+      get("/scripts/.dprint-ext-added.sh"),
+      "/scripts/.dprint-ext-added.sh"
+    );
+  }
 
   #[tokio::test]
   async fn should_error_output_empty_file() {

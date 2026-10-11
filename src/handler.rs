@@ -328,18 +328,18 @@ fn select_commands<'a>(
 /// Gets the path of the file on disk from the file path dprint provided.
 ///
 /// dprint adds a marker and an extension to the path of an extensionless file
-/// that it matched by its shebang (ex. `build.dprint-shebang.sh` for a file
+/// that it matched by its shebang (ex. `build.dprint-virtual.sh` for a file
 /// named `build`).
 fn get_real_file_path(file_path: &Path) -> Cow<'_, Path> {
-  const SHEBANG_MARKER: &str = ".dprint-shebang.";
+  const VIRTUAL_MARKER: &str = ".dprint-virtual.";
   let Some(path_text) = file_path.to_str() else {
     return Cow::Borrowed(file_path);
   };
-  let Some(index) = path_text.rfind(SHEBANG_MARKER) else {
+  let Some(index) = path_text.rfind(VIRTUAL_MARKER) else {
     return Cow::Borrowed(file_path);
   };
   // the marker and extension are at the end of the file name
-  let extension = &path_text[index + SHEBANG_MARKER.len()..];
+  let extension = &path_text[index + VIRTUAL_MARKER.len()..];
   let has_file_name = path_text[..index]
     .chars()
     .next_back()
@@ -588,13 +588,13 @@ mod test {
 
     // matched by the extension and given the path of the file on disk
     assert_eq!(
-      format("scripts/build.dprint-shebang.sh").await,
+      format("scripts/build.dprint-virtual.sh").await,
       "scripts/build\n"
     );
     assert_eq!(format("scripts/build.sh").await, "scripts/build.sh\n");
     // the associations are matched against the path of the file on disk
     assert_eq!(
-      format("scripts/deploy.dprint-shebang.txt").await,
+      format("scripts/deploy.dprint-virtual.txt").await,
       "association:scripts/deploy\n"
     );
   }
@@ -607,28 +607,28 @@ mod test {
         .to_string()
     }
 
-    assert_eq!(get("/scripts/build.dprint-shebang.sh"), "/scripts/build");
-    assert_eq!(get("./build.dprint-shebang.sh"), "./build");
-    assert_eq!(get("/.envrc.dprint-shebang.sh"), "/.envrc");
+    assert_eq!(get("/scripts/build.dprint-virtual.sh"), "/scripts/build");
+    assert_eq!(get("./build.dprint-virtual.sh"), "./build");
+    assert_eq!(get("/.envrc.dprint-virtual.sh"), "/.envrc");
     assert_eq!(get("/scripts/build"), "/scripts/build");
     assert_eq!(get("/scripts/build.sh"), "/scripts/build.sh");
     // not at the end of the file name
     assert_eq!(
-      get("/scripts/build.dprint-shebang.sh.txt"),
-      "/scripts/build.dprint-shebang.sh.txt"
+      get("/scripts/build.dprint-virtual.sh.txt"),
+      "/scripts/build.dprint-virtual.sh.txt"
     );
     assert_eq!(
-      get("/scripts/build.dprint-shebang.sh/file"),
-      "/scripts/build.dprint-shebang.sh/file"
+      get("/scripts/build.dprint-virtual.sh/file"),
+      "/scripts/build.dprint-virtual.sh/file"
     );
     assert_eq!(
-      get("/scripts/build.dprint-shebang."),
-      "/scripts/build.dprint-shebang."
+      get("/scripts/build.dprint-virtual."),
+      "/scripts/build.dprint-virtual."
     );
     // no file name before it
     assert_eq!(
-      get("/scripts/.dprint-shebang.sh"),
-      "/scripts/.dprint-shebang.sh"
+      get("/scripts/.dprint-virtual.sh"),
+      "/scripts/.dprint-virtual.sh"
     );
   }
 

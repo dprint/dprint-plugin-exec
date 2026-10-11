@@ -62,13 +62,17 @@ pub struct SetupCommand {
 impl CommandConfiguration {
   pub fn matches_exts_or_filenames(&self, path: &Path) -> bool {
     if let Some(filename) = path.file_name() {
+      // match case insensitively, which is what dprint does
       let filename = filename.to_string_lossy().to_lowercase();
       for ext in &self.file_extensions {
-        if filename.ends_with(ext) {
+        if filename.ends_with(&ext.to_lowercase()) {
           return true;
         }
       }
-      self.file_names.iter().any(|name| name == &filename)
+      self
+        .file_names
+        .iter()
+        .any(|name| name.to_lowercase() == filename)
     } else {
       false
     }
@@ -458,6 +462,44 @@ mod tests {
   use dprint_core::configuration::resolve_global_config;
   use pretty_assertions::assert_eq;
   use serde_json::json;
+
+  #[test]
+  fn matches_exts_and_file_names_case_insensitively() {
+    let unresolved_config = r#"{
+      "commands": [{
+        "command": "command",
+        "exts": ["PS1", "sh"],
+        "fileNames": ["Makefile", "justfile"]
+      }]
+    }"#;
+    let unresolved_config = serde_json::from_str(unresolved_config).unwrap();
+    let result = Configuration::resolve(unresolved_config, &Default::default());
+    assert!(result.diagnostics.is_empty());
+    let command = &result.config.commands[0];
+    for path in [
+      "/dir/file.ps1",
+      "/dir/file.PS1",
+      "/dir/file.sh",
+      "/dir/file.SH",
+      "/dir/Makefile",
+      "/dir/makefile",
+      "/dir/justfile",
+      "/dir/Justfile",
+    ] {
+      assert!(
+        command.matches_exts_or_filenames(Path::new(path)),
+        "{}",
+        path
+      );
+    }
+    for path in ["/dir/file.txt", "/dir/other", "/dir/makefile.txt"] {
+      assert!(
+        !command.matches_exts_or_filenames(Path::new(path)),
+        "{}",
+        path
+      );
+    }
+  }
 
   #[test]
   fn handle_global_config() {

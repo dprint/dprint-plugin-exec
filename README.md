@@ -71,6 +71,7 @@ Command config:
 Command templates (ex. see the prettier example above):
 
 - `{{file_path}}` - File path being formatted. For a file dprint matched by its [shebang](https://dprint.dev/config/#shebangs), this is the path of the file on disk and not the path with the extension that dprint provides to plugins.
+- `{{file_path_with_ext}}` - File path being formatted as dprint provides it. This is the same as `{{file_path}}` except for a file dprint matched by its [shebang](https://dprint.dev/config/#shebangs), where it has `.dprint-ext-added.<ext>` added to it (ex. `build.dprint-ext-added.sh` for a file named `build`). That path doesn't exist on disk, so only use it for telling a command the kind of file (ex. `--stdin-filepath {{file_path_with_ext}}`).
 - `{{ext}}` - Extension of the file being formatted without a leading period (ex. `sh`), or an empty string when it has none. For a file dprint matched by its [shebang](https://dprint.dev/config/#shebangs), this is the extension the shebang maps to, which is useful for telling a command the kind of file since `{{file_path}}` doesn't have that extension (ex. `--stdin-filepath file.{{ext}}`).
 - `{{line_width}}` - Configured line width.
 - `{{use_tabs}}` - Whether tabs should be used.

@@ -63,16 +63,15 @@ impl CommandConfiguration {
   pub fn matches_exts_or_filenames(&self, path: &Path) -> bool {
     if let Some(filename) = path.file_name() {
       // match case insensitively, which is what dprint does
-      let filename = filename.to_string_lossy().to_lowercase();
-      for ext in &self.file_extensions {
-        if filename.ends_with(&ext.to_lowercase()) {
-          return true;
-        }
-      }
+      let filename = filename.to_string_lossy();
       self
-        .file_names
+        .file_extensions
         .iter()
-        .any(|name| name.to_lowercase() == filename)
+        .any(|ext| ends_with_ignore_case(&filename, ext))
+        || self
+          .file_names
+          .iter()
+          .any(|name| eq_ignore_case(&filename, name))
     } else {
       false
     }
@@ -455,6 +454,21 @@ fn compute_cache_key_files_hash(cache_key_file_hashes: &[String]) -> Option<Stri
   Some(format!("{:x}", hasher.finalize()))
 }
 
+fn eq_ignore_case(a: &str, b: &str) -> bool {
+  a.chars()
+    .flat_map(char::to_lowercase)
+    .eq(b.chars().flat_map(char::to_lowercase))
+}
+
+fn ends_with_ignore_case(text: &str, suffix: &str) -> bool {
+  let mut text_chars = text.chars().rev().flat_map(|c| c.to_lowercase().rev());
+  suffix
+    .chars()
+    .rev()
+    .flat_map(|c| c.to_lowercase().rev())
+    .all(|c| text_chars.next() == Some(c))
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -492,13 +506,37 @@ mod tests {
         path
       );
     }
-    for path in ["/dir/file.txt", "/dir/other", "/dir/makefile.txt"] {
+    for path in [
+      "/dir/file.txt",
+      "/dir/other",
+      "/dir/makefile.txt",
+      "/dir/sh",
+      "/dir/s1",
+      "/dir/akefile",
+      "/dir/amakefile",
+    ] {
       assert!(
         !command.matches_exts_or_filenames(Path::new(path)),
         "{}",
         path
       );
     }
+  }
+
+  #[test]
+  fn ignore_case_comparisons() {
+    assert!(eq_ignore_case("Makefile", "makefile"));
+    assert!(eq_ignore_case("\u{00c9}t\u{00e9}", "\u{00e9}T\u{00c9}"));
+    assert!(eq_ignore_case("", ""));
+    assert!(!eq_ignore_case("makefile", "makefil"));
+    assert!(!eq_ignore_case("makefile", "makefiles"));
+
+    assert!(ends_with_ignore_case("file.PS1", ".ps1"));
+    assert!(ends_with_ignore_case("file.\u{00c9}", ".\u{00e9}"));
+    assert!(ends_with_ignore_case(".ps1", ".PS1"));
+    assert!(ends_with_ignore_case("file", ""));
+    assert!(!ends_with_ignore_case("ps1", ".ps1"));
+    assert!(!ends_with_ignore_case("file.ps1x", ".ps1"));
   }
 
   #[test]

@@ -70,7 +70,7 @@ Command config:
 
 Command templates (ex. see the prettier example above):
 
-- `{{file_path}}` - File path being formatted.
+- `{{file_path}}` - File path being formatted. For a file dprint matched by its [shebang](https://dprint.dev/config/#shebangs), this is the path of the file on disk and not the path with the extension that dprint provides to plugins.
 - `{{line_width}}` - Configured line width.
 - `{{use_tabs}}` - Whether tabs should be used.
 - `{{indent_width}}` - Whether tabs should be used.

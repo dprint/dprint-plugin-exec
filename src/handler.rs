@@ -186,7 +186,7 @@ pub async fn format_bytes(
     }
 
     // format here
-    let args = maybe_substitute_variables(&real_file_path, &config, command);
+    let args = maybe_substitute_variables(&file_path, &real_file_path, &config, command);
 
     let mut child = ChildKillOnDrop(
       Command::new(&command.executable)
@@ -510,6 +510,7 @@ where
 
 fn maybe_substitute_variables(
   file_path: &Path,
+  real_file_path: &Path,
   config: &Configuration,
   command: &CommandConfiguration,
 ) -> Vec<String> {
@@ -519,6 +520,7 @@ fn maybe_substitute_variables(
   #[derive(Clone, Serialize, Deserialize)]
   struct TemplateVariables {
     file_path: String,
+    ext: String,
     line_width: u32,
     use_tabs: bool,
     indent_width: u8,
@@ -527,7 +529,13 @@ fn maybe_substitute_variables(
   }
 
   let vars = TemplateVariables {
-    file_path: file_path.to_string_lossy().to_string(),
+    file_path: real_file_path.to_string_lossy().to_string(),
+    // the extension comes from the path dprint provided because that
+    // has the extension of a file dprint matched by its shebang
+    ext: file_path
+      .extension()
+      .map(|ext| ext.to_string_lossy().to_string())
+      .unwrap_or_default(),
     line_width: config.line_width,
     use_tabs: config.use_tabs,
     indent_width: config.indent_width,
@@ -566,6 +574,12 @@ mod test {
       }, {
         "command": "deno eval console.log(Deno.args[0]+Deno.args[1]) association: {{file_path}}",
         "associations": "**/deploy"
+      }, {
+        "command": "deno eval console.log(Deno.args[0]) ext:{{ext}}",
+        "exts": ["ps1"]
+      }, {
+        "command": "deno eval console.log(Deno.args[0]) ext:{{ext}}",
+        "fileNames": ["makefile"]
       }]
     }"#;
     let unresolved_config = serde_json::from_str(unresolved_config).unwrap();
@@ -597,6 +611,13 @@ mod test {
       format("scripts/deploy.dprint-ext-added.txt").await,
       "association:scripts/deploy\n"
     );
+    // the extension is the one dprint provided
+    assert_eq!(
+      format("scripts/build.dprint-ext-added.ps1").await,
+      "ext:ps1\n"
+    );
+    assert_eq!(format("scripts/build.ps1").await, "ext:ps1\n");
+    assert_eq!(format("scripts/makefile").await, "ext:\n");
   }
 
   #[test]

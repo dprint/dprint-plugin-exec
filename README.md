@@ -44,7 +44,7 @@ This plugin executes CLI commands to format code via stdin (recommended) or via 
     }],
   },
   "plugins": [
-    // run `dprint config add exec` to add the latest exec plugin's url here
+    // run `dprint add exec` to add the latest exec plugin's url here
   ],
 }
 ```
@@ -92,7 +92,7 @@ Command templates (ex. see the prettier example above):
     }],
   },
   "plugins": [
-    // run `dprint config add exec` to add the latest exec plugin's url here
+    // run `dprint add exec` to add the latest exec plugin's url here
   ],
 }
 ```
@@ -110,7 +110,7 @@ Command templates (ex. see the prettier example above):
     }],
   },
   "plugins": [
-    // run `dprint config add exec` to add the latest exec plugin's url here
+    // run `dprint add exec` to add the latest exec plugin's url here
   ],
 }
 ```
@@ -135,7 +135,7 @@ Use the `rustfmt` binary so you can format stdin.
     }],
   },
   "plugins": [
-    // run `dprint config add exec` to add the latest exec plugin's url here
+    // run `dprint add exec` to add the latest exec plugin's url here
   ],
 }
 ```
@@ -160,7 +160,7 @@ Consider using [dprint-plugin-prettier](https://dprint.dev/plugins/prettier/) in
     }],
   },
   "plugins": [
-    // run `dprint config add exec` to add the latest exec plugin's url here
+    // run `dprint add exec` to add the latest exec plugin's url here
   ],
 }
 ```

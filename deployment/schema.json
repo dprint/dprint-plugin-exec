@@ -4,10 +4,6 @@
   "type": "object",
   "required": ["commands"],
   "properties": {
-    "locked": {
-      "description": "Whether the configuration is not allowed to be overriden or extended.",
-      "type": "boolean"
-    },
     "lineWidth": {
       "description": "The width of a line the printer will try to stay under. Note that the printer may exceed this width in certain cases.",
       "default": 120,
@@ -28,19 +24,6 @@
       }, {
         "const": false,
         "description": ""
-      }]
-    },
-    "associations": {
-      "description": "Glob pattern that associates this plugin with certain file paths (ex. \"**/*.{rs,java,py}\").",
-      "anyOf": [{
-        "description": "Glob pattern that associates this plugin with certain file paths (ex. \"**/*.{rs,java,py}\").",
-        "type": "string"
-      }, {
-        "description": "Glob patterns that associates this plugin with certain file paths.",
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
       }]
     },
     "cacheKey": {

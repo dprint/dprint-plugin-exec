@@ -441,16 +441,15 @@ const draftReleaseJob = job("draft_release", {
     },
     {
       name: "Release",
-      uses: "softprops/action-gh-release@v2.6.1",
-      env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" },
-      with: {
-        files: [
-          ...profiles.map((profile) => profile.zipFileName),
-          "plugin.json",
-          "deployment/schema.json",
-        ].join("\n"),
-        body_path: "${{ github.workspace }}-CHANGELOG.txt",
-      },
+      // gh uploads the assets to a draft and then publishes it, which immutable releases require
+      env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" },
+      run: [
+        `gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME"`,
+        "--notes-file ${{ github.workspace }}-CHANGELOG.txt",
+        ...profiles.map((profile) => profile.zipFileName),
+        "plugin.json",
+        "deployment/schema.json",
+      ].join(" \\\n  "),
     },
     {
       name: "Publish npm packages",

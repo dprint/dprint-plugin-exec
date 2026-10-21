@@ -78,7 +78,7 @@ impl AsyncPluginHandler for ExecHandler {
       name: name.clone(),
       version: version.clone(),
       config_key: "exec".to_string(),
-      help_url: env!("CARGO_PKG_HOMEPAGE").to_string(),
+      help_url: "https://dprint.dev/plugins/exec".to_string(),
       config_schema_url: format!(
         "https://plugins.dprint.dev/dprint/{}/{}/schema.json",
         name, version

@@ -516,6 +516,8 @@ fn maybe_substitute_variables(
 ) -> Vec<String> {
   let mut handlebars = Handlebars::new();
   handlebars.set_strict_mode(true);
+  // the arguments are given to the command as is rather than put in html
+  handlebars.register_escape_fn(handlebars::no_escape);
 
   #[derive(Clone, Serialize, Deserialize)]
   struct TemplateVariables {
@@ -564,6 +566,7 @@ mod test {
 
   use super::SetupState;
   use super::get_real_file_path;
+  use super::maybe_substitute_variables;
   use crate::configuration::Configuration;
   use crate::format_bytes;
 
@@ -629,6 +632,26 @@ mod test {
       "scripts/build.dprint-ext-added.bat\n"
     );
     assert_eq!(format("scripts/build.bat").await, "scripts/build.bat\n");
+  }
+
+  #[test]
+  fn should_not_escape_substituted_variables() {
+    let unresolved_config = r#"{
+      "commands": [{
+        "command": "formatter {{file_path}} {{file_path_with_ext}}",
+        "exts": ["txt"]
+      }]
+    }"#;
+    let unresolved_config = serde_json::from_str(unresolved_config).unwrap();
+    let config = Configuration::resolve(unresolved_config, &Default::default()).config;
+    let file_path = std::path::Path::new("dir/a&b's \"<file>\"=.txt");
+    assert_eq!(
+      maybe_substitute_variables(file_path, file_path, &config, &config.commands[0]),
+      vec![
+        "dir/a&b's \"<file>\"=.txt".to_string(),
+        "dir/a&b's \"<file>\"=.txt".to_string(),
+      ]
+    );
   }
 
   #[test]

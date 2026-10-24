@@ -1,5 +1,5 @@
 #!/usr/bin/env -S deno run -A
-import { expr, workflow } from "jsr:@david/gagen@^0.5.0";
+import { expr, workflow } from "jsr:@david/gagen@^0.8.0";
 
 const releaseKind = expr("github.event.inputs.releaseKind");
 const actor = expr("github.actor");

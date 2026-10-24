@@ -1,5 +1,13 @@
 #!/usr/bin/env -S deno run -A
-import { conditions, defineMatrix, expr, job, step, workflow } from "jsr:@david/gagen@^0.5.0";
+import {
+  conditions,
+  defineMatrix,
+  expr,
+  fromJSON,
+  job,
+  step,
+  workflow,
+} from "jsr:@david/gagen@^0.8.0";
 
 enum OperatingSystem {
   Macx86 = "macos-15-intel",
@@ -13,6 +21,8 @@ interface ProfileData {
   target: string;
   cross?: boolean;
   runTests?: boolean;
+  /** Also build this target on PRs. Every other target only builds on main and tags. */
+  runOnPr?: boolean;
   /**
    * Build by running cargo directly inside this Docker image. Used for targets
    * cross doesn't provide an image for (e.g. riscv64gc/powerpc64le musl), where the image
@@ -35,10 +45,12 @@ const profileDataItems: ProfileData[] = [{
   os: OperatingSystem.MacArm,
   target: "aarch64-apple-darwin",
   runTests: true,
+  runOnPr: true,
 }, {
   os: OperatingSystem.Windows,
   target: "x86_64-pc-windows-msvc",
   runTests: true,
+  runOnPr: true,
 }, {
   // windows arm: cross-compiled on the x64 windows runner, which ships the
   // MSVC ARM64 cross tools. can't execute on the x64 runner, so no tests.
@@ -48,6 +60,7 @@ const profileDataItems: ProfileData[] = [{
   os: OperatingSystem.Linux,
   target: "x86_64-unknown-linux-gnu",
   runTests: true,
+  runOnPr: true,
   // glibc 2.17 matches Rust's own minimum for this target (CentOS 7+)
   zigbuildGlibc: "2.17",
 }, {
@@ -126,21 +139,29 @@ const profiles = profileDataItems.map((profile) => {
   };
 });
 
+const matrixConfigs = profiles.map((profile) => ({
+  os: profile.os,
+  run_tests: (profile.runTests ?? false).toString(),
+  target: profile.target,
+  cross: (profile.cross ?? false).toString(),
+  musl_image: profile.muslCrossImage ?? "",
+  zigbuild_glibc: profile.zigbuildGlibc ?? "",
+  // build and test through cargo-zigbuild for zigbuild targets so the test
+  // suite links (and runs) binaries the same way as the published ones
+  cargo: profile.zigbuildGlibc != null ? "cargo-zigbuild" : "cargo",
+  cargo_target: profile.zigbuildGlibc != null
+    ? `${profile.target}.${profile.zigbuildGlibc}`
+    : profile.target,
+}));
+const prMatrixConfigs = matrixConfigs.filter((_, i) => profiles[i].runOnPr);
+
 const matrix = defineMatrix({
-  config: profiles.map((profile) => ({
-    os: profile.os,
-    run_tests: (profile.runTests ?? false).toString(),
-    target: profile.target,
-    cross: (profile.cross ?? false).toString(),
-    musl_image: profile.muslCrossImage ?? "",
-    zigbuild_glibc: profile.zigbuildGlibc ?? "",
-    // build and test through cargo-zigbuild for zigbuild targets so the test
-    // suite links (and runs) binaries the same way as the published ones
-    cargo: profile.zigbuildGlibc != null ? "cargo-zigbuild" : "cargo",
-    cargo_target: profile.zigbuildGlibc != null
-      ? `${profile.target}.${profile.zigbuildGlibc}`
-      : profile.target,
-  })),
+  // only build the main windows, linux, and mac targets on PRs to keep them fast
+  config: fromJSON(
+    conditions.isEvent("pull_request")
+      .then(JSON.stringify(prMatrixConfigs))
+      .else(JSON.stringify(matrixConfigs)),
+  ),
 });
 
 const target = expr("matrix.config.target");
@@ -408,7 +429,10 @@ const draftReleaseJob = job("draft_release", {
     { uses: "denoland/setup-deno@v2" },
     {
       uses: "actions/setup-node@v6",
-      with: { "node-version": "24.x", "registry-url": "https://registry.npmjs.org" },
+      with: {
+        "node-version": "24.x",
+        "registry-url": "https://registry.npmjs.org",
+      },
     },
     {
       name: "Move downloaded artifacts to root directory",
@@ -422,7 +446,8 @@ const draftReleaseJob = job("draft_release", {
     },
     {
       name: "Create plugin file",
-      run: "deno run --minimum-dependency-age=0 --allow-read=. --allow-write=. scripts/create_plugin_file.ts",
+      run:
+        "deno run --minimum-dependency-age=0 --allow-read=. --allow-write=. scripts/create_plugin_file.ts",
     },
     getTagVersion,
     {

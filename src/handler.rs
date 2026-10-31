@@ -115,6 +115,7 @@ impl AsyncPluginHandler for ExecHandler {
           .flat_map(|c| c.file_names.iter())
           .map(|s| s.to_string())
           .collect(),
+        additive: false,
       },
       config,
       diagnostics: result.diagnostics,

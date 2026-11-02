@@ -87,6 +87,7 @@ impl AsyncPluginHandler for ExecHandler {
         "https://plugins.dprint.dev/dprint/{}/latest.json",
         name
       )),
+      supports_range_formatting: Some(false),
     }
   }
 

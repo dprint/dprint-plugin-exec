@@ -7,12 +7,15 @@
     "lineWidth": {
       "description": "The width of a line the printer will try to stay under. Note that the printer may exceed this width in certain cases.",
       "default": 120,
-      "type": "number"
+      "type": "integer",
+      "minimum": 1
     },
     "indentWidth": {
       "description": "The number of characters for an indent.",
       "default": 2,
-      "type": "number"
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 255
     },
     "useTabs": {
       "description": "Whether to use tabs (true) or spaces (false).",
@@ -20,10 +23,10 @@
       "default": false,
       "oneOf": [{
         "const": true,
-        "description": ""
+        "description": "Uses tabs for indentation."
       }, {
         "const": false,
-        "description": ""
+        "description": "Uses spaces for indentation."
       }]
     },
     "cacheKey": {
@@ -36,7 +39,8 @@
     },
     "timeout": {
       "description": "Number of seconds to allow a format to progress before a timeout error occurs.",
-      "type": "number",
+      "type": "integer",
+      "minimum": 1,
       "default": 30
     },
     "commands": {

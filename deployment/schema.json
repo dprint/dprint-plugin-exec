@@ -2,23 +2,6 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://plugins.dprint.dev/dprint/dprint-plugin-exec/0.0.0/schema.json",
   "type": "object",
-  "x-playground": {
-    "extension": "rs",
-    "input": [
-      "use std::collections::HashMap;",
-      "",
-      "fn count_words(text:&str)->HashMap<String,usize>{",
-      "    let mut counts=HashMap::new();",
-      "  for word in text.split_whitespace(){*counts.entry(word.to_lowercase()).or_insert(0)+=1;}",
-      "    counts",
-      "}",
-      "",
-      "fn main(){",
-      "let counts=count_words(\"the quick brown fox jumps over the lazy dog\");",
-      "    println!(\"{:?}\",counts.get(\"the\"));",
-      "}"
-    ]
-  },
   "required": ["commands"],
   "properties": {
     "lineWidth": {

@@ -29,7 +29,7 @@ fn test_specs() {
       fix_failures: false,
       format_twice: true,
     },
-    Arc::new(move |file_name, file_text, spec_config| {
+    Arc::new(move |file_name, file_text, _range, spec_config| {
       let map: ConfigKeyMap = serde_json::from_value(spec_config.clone().into()).unwrap();
       let config_result = Configuration::resolve(map, &Default::default());
       ensure_no_diagnostics(&config_result.diagnostics);
